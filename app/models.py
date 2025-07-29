@@ -1,0 +1,137 @@
+from typing import Dict, List, Optional, Literal
+from dataclasses import dataclass
+from enum import Enum
+
+
+class GameType(str, Enum):
+    OMOK = "omok"
+    JANGGI = "janggi"
+    SLITHER = "slither"
+
+
+class GameStatus(str, Enum):
+    WAITING = "waiting"
+    PLAYING = "playing"
+    ENDED = "ended"
+
+
+@dataclass
+class Player:
+    nickname: str
+    player_number: int
+
+
+@dataclass
+class GameMove:
+    x: int
+    y: int
+    player: int
+
+
+@dataclass
+class OmokGameState:
+    board: List[List[int]]
+    current_player: int
+    
+    def to_client_format(self) -> Dict:
+        """클라이언트용 형식으로 변환"""
+        return {
+            "board": self.board,
+            "currentPlayer": self.current_player
+        }
+    
+    @classmethod
+    def from_client_format(cls, data: Dict) -> 'OmokGameState':
+        """클라이언트 형식에서 생성"""
+        return cls(
+            board=data["board"],
+            current_player=data["currentPlayer"]
+        )
+
+
+@dataclass
+class MoveHistoryEntry:
+    move: GameMove
+    board_state: List[List[int]]
+    player: int
+
+
+@dataclass
+class Room:
+    room_id: str
+    game_type: GameType
+    players: List[Player]
+    game_state: Dict
+    status: GameStatus
+    game_ended: bool = False
+    winner: Optional[int] = None
+    move_history: List[MoveHistoryEntry] = None
+    undo_requests: Dict = None
+    
+    def __post_init__(self):
+        if self.move_history is None:
+            self.move_history = []
+        if self.undo_requests is None:
+            self.undo_requests = {}
+    
+    def add_player(self, nickname: str) -> Optional[Player]:
+        """플레이어 추가"""
+        if len(self.players) >= 2:
+            return None
+        
+        player = Player(
+            nickname=nickname,
+            player_number=len(self.players) + 1
+        )
+        self.players.append(player)
+        
+        if len(self.players) == 2:
+            self.status = GameStatus.PLAYING
+            
+        return player
+    
+    def get_player_by_number(self, player_number: int) -> Optional[Player]:
+        """플레이어 번호로 플레이어 조회"""
+        for player in self.players:
+            if player.player_number == player_number:
+                return player
+        return None
+    
+    def is_full(self) -> bool:
+        """방이 가득 찬지 확인"""
+        return len(self.players) >= 2
+
+
+# WebSocket 메시지 타입들
+class MessageType(str, Enum):
+    # 게임 플로우
+    JOIN = "join"
+    MOVE = "move"
+    GAME_END = "game_end"
+    RESTART_REQUEST = "restart_request"
+    RESTART_RESPONSE = "restart_response"
+    UNDO_REQUEST = "undo_request"
+    UNDO_RESPONSE = "undo_response"
+    
+    # 상태 업데이트
+    ROOM_UPDATE = "room_update"
+    GAME_UPDATE = "game_update"
+    RESTART_ACCEPTED = "restart_accepted"
+    RESTART_REJECTED = "restart_rejected"
+    UNDO_ACCEPTED = "undo_accepted"
+    UNDO_REJECTED = "undo_rejected"
+    
+    # 에러
+    ERROR = "error"
+
+
+@dataclass
+class WebSocketMessage:
+    type: MessageType
+    data: Dict
+    
+    def to_json(self) -> Dict:
+        return {
+            "type": self.type.value,
+            **self.data
+        }

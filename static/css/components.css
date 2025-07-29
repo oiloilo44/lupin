@@ -1,0 +1,182 @@
+/* UI 컴포넌트 스타일 */
+
+/* 게임 메뉴 */
+.game-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.game-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.game-card:hover {
+    background: #f9fafb;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+.game-card h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+}
+
+.game-card p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* 닉네임 입력 폼 */
+.nickname-form {
+    text-align: center;
+    padding: 20px;
+}
+
+.nickname-form input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    margin: 0 8px;
+    font-size: 14px;
+}
+
+.nickname-form button {
+    padding: 8px 16px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.nickname-form button:hover {
+    background: #2563eb;
+}
+
+/* 게임 상태 표시 */
+.game-status {
+    background: #f3f4f6;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.game-status.waiting {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.game-status.playing {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.game-status.ended {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* 게임 정보 패널 */
+.game-info-panel {
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.game-info-panel h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: white;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.player-item.active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.player-item.my-turn {
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.player-name {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.player-stone {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.stone-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid #d1d5db;
+}
+
+.stone-indicator.black {
+    background: #000;
+}
+
+.stone-indicator.white {
+    background: #fff;
+}
+
+.game-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}

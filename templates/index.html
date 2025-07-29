@@ -65,6 +65,24 @@
     </div>
     <button onclick="backToOmokMenu()" style="margin: 5px; padding: 8px 16px;">뒤로 가기</button>
 </div>
+
+<!-- 모달 오버레이 -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">제목</h3>
+        </div>
+        <div class="modal-body" id="modalBody">
+            내용
+        </div>
+        <div class="modal-footer" id="modalFooter">
+            <!-- 버튼들이 동적으로 추가됩니다 -->
+        </div>
+    </div>
+</div>
+
+<!-- 토스트 컨테이너 -->
+<div class="toast-container" id="toastContainer"></div>
 {% endblock %}
 
 {% block extra_js %}
@@ -103,7 +121,9 @@ async function createOmokRoom() {
         currentRoomPath = data.url;
         showRoomCreated(currentRoomUrl);
     } catch (error) {
-        alert('방 생성에 실패했습니다.');
+        showModal('오류', '방 생성에 실패했습니다.', [
+            { text: '확인', class: 'primary', onclick: hideModal }
+        ]);
     }
 }
 
@@ -114,7 +134,9 @@ async function createJanggiRoom() {
         currentRoomUrl = window.location.origin + data.url;
         showRoomCreated(currentRoomUrl);
     } catch (error) {
-        alert('방 생성에 실패했습니다.');
+        showModal('오류', '방 생성에 실패했습니다.', [
+            { text: '확인', class: 'primary', onclick: hideModal }
+        ]);
     }
 }
 
@@ -129,7 +151,9 @@ function joinRoomByLink() {
     const link = linkInput.value.trim();
     
     if (!link) {
-        alert('방 링크를 입력해주세요.');
+        showModal('알림', '방 링크를 입력해주세요.', [
+            { text: '확인', class: 'primary', onclick: hideModal }
+        ]);
         return;
     }
     
@@ -140,17 +164,23 @@ function joinRoomByLink() {
         if (path.startsWith('/omok/')) {
             window.location.href = link;
         } else {
-            alert('올바른 오목 방 링크가 아닙니다.');
+            showModal('오류', '올바른 오목 방 링크가 아닙니다.', [
+                { text: '확인', class: 'primary', onclick: hideModal }
+            ]);
         }
     } catch (error) {
-        alert('올바른 링크 형식이 아닙니다.');
+        showModal('오류', '올바른 링크 형식이 아닙니다.', [
+            { text: '확인', class: 'primary', onclick: hideModal }
+        ]);
     }
 }
 
 function joinRoomAsHost() {
     const nickname = document.getElementById('hostNickname').value.trim();
     if (!nickname) {
-        alert('닉네임을 입력해주세요.');
+        showModal('알림', '닉네임을 입력해주세요.', [
+            { text: '확인', class: 'primary', onclick: hideModal }
+        ]);
         return;
     }
     
@@ -163,16 +193,18 @@ function copyToClipboard() {
     const urlInput = document.getElementById('roomUrl');
     urlInput.select();
     navigator.clipboard.writeText(urlInput.value).then(() => {
-        alert('링크가 복사되었습니다!');
+        showToast('복사 완료', '링크가 클립보드에 복사되었습니다!', 'success');
     }).catch(() => {
         // Fallback for older browsers
         document.execCommand('copy');
-        alert('링크가 복사되었습니다!');
+        showToast('복사 완료', '링크가 클립보드에 복사되었습니다!', 'success');
     });
 }
 
 function showSettings() {
-    alert('설정 기능은 추후 구현 예정입니다.');
+    showModal('알림', '설정 기능은 추후 구현 예정입니다.', [
+        { text: '확인', class: 'primary', onclick: hideModal }
+    ]);
 }
 </script>
 {% endblock %}

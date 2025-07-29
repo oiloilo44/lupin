@@ -532,9 +532,15 @@ function joinGame() {
             
             setTimeout(() => showWinModal(data.winner, isMyWin), 1500);
         } else if (data.type === 'restart_request') {
-            // 요청자 본인에게는 동의창을 보여주지 않음
-            if (data.from !== myPlayerNumber) {
-                const requesterName = players.find(p => p.player_number === data.from)?.nickname || '상대방';
+            const requesterName = players.find(p => p.player_number === data.from)?.nickname || '상대방';
+            
+            if (data.is_requester) {
+                // 요청자에게는 대기 메시지 표시
+                showModal('게임 재시작 요청', '상대방에게 재시작 요청을 보냈습니다. 응답을 기다리는 중...', [
+                    { text: '확인', class: 'primary', onclick: hideModal }
+                ]);
+            } else {
+                // 상대방에게는 동의 여부 확인
                 showRestartRequestModal(requesterName);
             }
         } else if (data.type === 'restart_accepted') {
@@ -559,7 +565,16 @@ function joinGame() {
             ]);
         } else if (data.type === 'undo_request') {
             const requesterName = players.find(p => p.player_number === data.from)?.nickname || '상대방';
-            showUndoRequestModal(requesterName);
+            
+            if (data.is_requester) {
+                // 요청자에게는 대기 메시지 표시
+                showModal('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', [
+                    { text: '확인', class: 'primary', onclick: hideModal }
+                ]);
+            } else {
+                // 상대방에게는 동의 여부 확인
+                showUndoRequestModal(requesterName);
+            }
         } else if (data.type === 'undo_accepted') {
             gameState = data.game_state;
             // 총 수 횟수를 보드의 돌 개수로 다시 계산
@@ -707,10 +722,6 @@ function requestRestart() {
         type: 'restart_request',
         from: myPlayerNumber
     }));
-    
-    showModal('알림', '상대방에게 재시작 요청을 보냈습니다. 응답을 기다리는 중...', [
-        { text: '확인', class: 'primary', onclick: hideModal }
-    ]);
 }
 
 function requestUndo() {
@@ -730,10 +741,6 @@ function requestUndo() {
         type: 'undo_request',
         from: myPlayerNumber
     }));
-    
-    showModal('알림', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', [
-        { text: '확인', class: 'primary', onclick: hideModal }
-    ]);
 }
 
 function showUndoRequestModal(requesterName) {
