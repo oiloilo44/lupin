@@ -35,7 +35,11 @@ async def create_omok_room():
 async def omok_room(request: Request, room_id: str):
     """오목 게임 방"""
     if not room_manager.room_exists(room_id):
-        return HTMLResponse("<h1>방을 찾을 수 없습니다.</h1>", status_code=404)
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error_title": "게임 방을 찾을 수 없습니다",
+            "error_message": "요청하신 오목 게임 방이 존재하지 않거나 이미 종료되었습니다."
+        }, status_code=404)
     return templates.TemplateResponse("omok.html", {"request": request, "room_id": room_id})
 
 
@@ -51,7 +55,11 @@ async def create_janggi_room():
 async def janggi_room(request: Request, room_id: str):
     """장기 게임 방"""
     if not room_manager.room_exists(room_id):
-        return HTMLResponse("<h1>방을 찾을 수 없습니다.</h1>", status_code=404)
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error_title": "게임 방을 찾을 수 없습니다",
+            "error_message": "요청하신 장기 게임 방이 존재하지 않거나 이미 종료되었습니다."
+        }, status_code=404)
     return templates.TemplateResponse("janggi.html", {"request": request, "room_id": room_id})
 
 

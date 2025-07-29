@@ -172,6 +172,10 @@ class WebSocketHandler:
         requester_player_number = message["from"]
         connections = room_manager.get_room_connections(room_id)
         
+        # 무르기 요청자 정보를 방에 저장 (응답 처리 시 사용)
+        room.undo_requests["requester"] = requester_player_number
+        room.undo_requests["requester_websocket"] = websocket
+        
         # 각 플레이어에게 다른 메시지 전송
         for ws in connections:
             try:
@@ -205,7 +209,7 @@ class WebSocketHandler:
             return
         
         if message["accepted"] and len(room.move_history) > 0:
-            # 무르기 승인
+            # 무르기 승인 - 모든 플레이어에게 알림
             game_state = OmokGameState(
                 board=room.game_state["board"],
                 current_player=room.game_state["current_player"]
@@ -226,19 +230,35 @@ class WebSocketHandler:
                         }
                     }
                 )
+                await self._broadcast_to_room(room_id, response.to_json())
             else:
+                # 무르기 실패 - 요청자에게만 알림
+                requester_ws = room.undo_requests.get("requester_websocket")
+                if requester_ws:
+                    response = WebSocketMessage(
+                        type=MessageType.UNDO_REJECTED,
+                        data={}
+                    )
+                    try:
+                        await requester_ws.send_text(json.dumps(response.to_json()))
+                    except:
+                        pass
+        else:
+            # 무르기 거부 - 요청자에게만 알림
+            requester_ws = room.undo_requests.get("requester_websocket")
+            if requester_ws:
                 response = WebSocketMessage(
                     type=MessageType.UNDO_REJECTED,
                     data={}
                 )
-        else:
-            # 무르기 거부
-            response = WebSocketMessage(
-                type=MessageType.UNDO_REJECTED,
-                data={}
-            )
+                try:
+                    await requester_ws.send_text(json.dumps(response.to_json()))
+                except:
+                    # 연결이 끊어진 경우 무시
+                    pass
         
-        await self._broadcast_to_room(room_id, response.to_json())
+        # 무르기 요청 정보 초기화
+        room.undo_requests.clear()
     
     async def _broadcast_room_update(self, room_id: str, room):
         """방 상태 업데이트 브로드캐스트"""

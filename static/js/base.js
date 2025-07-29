@@ -9,6 +9,20 @@ function showGame() {
     document.getElementById('gameOverlay').classList.remove('hidden');
 }
 
+// 업무모드 토글 기능
+function toggleWorkMode() {
+    const overlay = document.getElementById('gameOverlay');
+    const button = document.querySelector('.quick-hide');
+    
+    if (overlay.classList.contains('hidden')) {
+        overlay.classList.remove('hidden');
+        button.textContent = '업무모드';
+    } else {
+        overlay.classList.add('hidden');
+        button.textContent = '게임모드';
+    }
+}
+
 // 키보드 단축키
 document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.key === 'Tab') {

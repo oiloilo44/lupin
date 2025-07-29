@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}오류 - Excel{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-modal">
+        <div class="error-header">
+            <h2>{{ error_title or "오류가 발생했습니다" }}</h2>
+        </div>
+        <div class="error-body">
+            <div class="error-icon">⚠️</div>
+            <p class="error-message">{{ error_message or "요청하신 페이지를 찾을 수 없습니다." }}</p>
+            <div class="error-details">
+                <p>다음과 같은 이유로 오류가 발생할 수 있습니다:</p>
+                <ul>
+                    <li>잘못된 URL을 입력하셨습니다</li>
+                    <li>게임 방이 이미 종료되었습니다</li>
+                    <li>링크가 만료되었습니다</li>
+                </ul>
+            </div>
+        </div>
+        <div class="error-footer">
+            <button onclick="window.location.href='/'" class="error-button primary">
+                🏠 메인 페이지로 이동
+            </button>
+            <button onclick="window.history.back()" class="error-button secondary">
+                ← 이전 페이지로
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 500px;
+    padding: 20px;
+}
+
+.error-modal {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-width: 500px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.error-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.error-header h2 {
+    margin: 0;
+    color: #495057;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.error-body {
+    padding: 24px;
+    text-align: center;
+}
+
+.error-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.error-message {
+    font-size: 16px;
+    color: #495057;
+    margin: 0 0 20px 0;
+    font-weight: 500;
+}
+
+.error-details {
+    text-align: left;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 20px 0;
+}
+
+.error-details p {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.error-details ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.error-details li {
+    margin: 6px 0;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.error-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 20px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.error-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.error-button.primary {
+    background: #007bff;
+    color: white;
+}
+
+.error-button.primary:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.error-button.secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.error-button.secondary:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 480px) {
+    .error-container {
+        padding: 10px;
+    }
+    
+    .error-modal {
+        margin: 0;
+    }
+    
+    .error-header,
+    .error-body,
+    .error-footer {
+        padding: 16px;
+    }
+    
+    .error-footer {
+        flex-direction: column;
+    }
+    
+    .error-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

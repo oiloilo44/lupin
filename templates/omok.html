@@ -98,25 +98,30 @@ let winnerNumber = null;
 function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // 동적 크기 계산
+    const boardSize = Math.min(canvas.width, canvas.height);
+    const cellSize = (boardSize - 60) / 14; // 여백 30px씩 빼고 14칸으로 나눔
+    const margin = (boardSize - cellSize * 14) / 2;
+    
     // 배경
     ctx.fillStyle = '#deb887';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // 격자 그리기
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(1, cellSize / 30); // 크기에 비례한 선 굵기
     
     for (let i = 0; i < 15; i++) {
         // 세로선
         ctx.beginPath();
-        ctx.moveTo(30 + i * 30, 30);
-        ctx.lineTo(30 + i * 30, 450 - 30);
+        ctx.moveTo(margin + i * cellSize, margin);
+        ctx.lineTo(margin + i * cellSize, boardSize - margin);
         ctx.stroke();
         
         // 가로선
         ctx.beginPath();
-        ctx.moveTo(30, 30 + i * 30);
-        ctx.lineTo(450 - 30, 30 + i * 30);
+        ctx.moveTo(margin, margin + i * cellSize);
+        ctx.lineTo(boardSize - margin, margin + i * cellSize);
         ctx.stroke();
     }
     
@@ -125,7 +130,7 @@ function drawBoard() {
     ctx.fillStyle = '#000';
     centerPoints.forEach(([x, y]) => {
         ctx.beginPath();
-        ctx.arc(30 + x * 30, 30 + y * 30, 3, 0, 2 * Math.PI);
+        ctx.arc(margin + x * cellSize, margin + y * cellSize, Math.max(2, cellSize / 10), 0, 2 * Math.PI);
         ctx.fill();
     });
     
@@ -133,53 +138,58 @@ function drawBoard() {
     if (hoverPosition && !gameEnded && players.length === 2 && gameState.currentPlayer === myPlayerNumber) {
         const [hx, hy] = hoverPosition;
         if (gameState.board[hy][hx] === 0) {
+            const stoneRadius = Math.max(8, cellSize * 0.4);
             ctx.beginPath();
-            ctx.arc(30 + hx * 30, 30 + hy * 30, 12, 0, 2 * Math.PI);
+            ctx.arc(margin + hx * cellSize, margin + hy * cellSize, stoneRadius, 0, 2 * Math.PI);
             ctx.fillStyle = gameState.currentPlayer === 1 ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)';
             ctx.fill();
             ctx.strokeStyle = gameState.currentPlayer === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(51, 51, 51, 0.5)';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = Math.max(1, cellSize / 30);
             ctx.stroke();
         }
     }
     
     // 돌 그리기
+    const stoneRadius = Math.max(8, cellSize * 0.4);
     for (let y = 0; y < 15; y++) {
         for (let x = 0; x < 15; x++) {
             if (gameState.board[y][x] !== 0) {
                 // 돌 그리기 애니메이션 효과
                 ctx.save();
                 
+                const centerX = margin + x * cellSize;
+                const centerY = margin + y * cellSize;
+                
                 ctx.beginPath();
-                ctx.arc(30 + x * 30, 30 + y * 30, 12, 0, 2 * Math.PI);
+                ctx.arc(centerX, centerY, stoneRadius, 0, 2 * Math.PI);
                 ctx.fillStyle = gameState.board[y][x] === 1 ? '#000' : '#fff';
                 ctx.fill();
                 ctx.strokeStyle = '#333';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = Math.max(1, cellSize / 30);
                 ctx.stroke();
                 
                 // 최근 둔 수 강조
                 if (lastMove && lastMove.x === x && lastMove.y === y) {
                     ctx.beginPath();
-                    ctx.arc(30 + x * 30, 30 + y * 30, 15, 0, 2 * Math.PI);
+                    ctx.arc(centerX, centerY, stoneRadius * 1.25, 0, 2 * Math.PI);
                     ctx.strokeStyle = '#ff4444';
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = Math.max(2, cellSize / 15);
                     ctx.stroke();
                 }
                 
                 // 승리 라인 강조
                 if (winningLine && winningLine.some(pos => pos.x === x && pos.y === y)) {
                     ctx.beginPath();
-                    ctx.arc(30 + x * 30, 30 + y * 30, 18, 0, 2 * Math.PI);
+                    ctx.arc(centerX, centerY, stoneRadius * 1.5, 0, 2 * Math.PI);
                     ctx.strokeStyle = '#ffd700';
-                    ctx.lineWidth = 4;
+                    ctx.lineWidth = Math.max(3, cellSize / 10);
                     ctx.stroke();
                     
                     // 반짝이는 효과
                     const time = Date.now();
                     const pulse = Math.sin(time / 200) * 0.3 + 0.7;
                     ctx.beginPath();
-                    ctx.arc(30 + x * 30, 30 + y * 30, 12 * pulse, 0, 2 * Math.PI);
+                    ctx.arc(centerX, centerY, stoneRadius * pulse, 0, 2 * Math.PI);
                     ctx.fillStyle = gameState.board[y][x] === 1 ? 
                         `rgba(255, 215, 0, ${0.3 * pulse})` : 
                         `rgba(255, 215, 0, ${0.2 * pulse})`;
@@ -371,9 +381,23 @@ function getEventPosition(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    // 캔버스의 실제 크기와 화면 크기의 비율 계산
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // 스케일링을 고려한 좌표 계산
+    const canvasX = (clientX - rect.left) * scaleX;
+    const canvasY = (clientY - rect.top) * scaleY;
+    
+    // 동적 크기 계산 (drawBoard 함수와 동일)
+    const boardSize = Math.min(canvas.width, canvas.height);
+    const cellSize = (boardSize - 60) / 14;
+    const margin = (boardSize - cellSize * 14) / 2;
+    
     return {
-        x: Math.round((clientX - rect.left - 30) / 30),
-        y: Math.round((clientY - rect.top - 30) / 30)
+        x: Math.round((canvasX - margin) / cellSize),
+        y: Math.round((canvasY - margin) / cellSize)
     };
 }
 
@@ -588,6 +612,7 @@ function joinGame() {
             }
             waitingForUndo = false;
             lastMove = null; // 무르기 후 마지막 수 하이라이트 제거
+            hideModal(); // 요청자의 대기 모달 자동 닫기
             drawBoard();
             updateUI();
             updateUndoButton();
@@ -887,17 +912,16 @@ function adjustMobileLayout() {
         gameLayout.style.flexDirection = 'column';
         gameLayout.style.gap = '15px';
         
-        // 캔버스 크기 조정
+        // 캔버스 크기 조정 - transform 대신 실제 크기 변경
         const size = Math.min(window.innerWidth - 60, 320);
         canvas.style.width = size + 'px';
         canvas.style.height = size + 'px';
+        canvas.width = size;
+        canvas.height = size;
         
-        // 실제 캔버스 크기는 비율 유지하여 조정
-        const scale = size / 450;
-        canvas.width = 450;
-        canvas.height = 450;
-        canvas.style.transform = `scale(${scale})`;
-        canvas.style.transformOrigin = 'top left';
+        // transform 제거 (더 정확한 좌표 계산을 위해)
+        canvas.style.transform = '';
+        canvas.style.transformOrigin = '';
         
         drawBoard();
     } else {
