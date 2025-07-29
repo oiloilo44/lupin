@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="game-menu">
+    <div class="game-card" onclick="location.href='/slither'">
+        <h3>🐍 지렁이 게임</h3>
+        <p>멀티플레이어 실시간 지렁이 게임<br>여러 명이 함께 플레이</p>
+    </div>
+    
+    <div class="game-card" onclick="showOmokMenu()">
+        <h3>⚫ 오목</h3>
+        <p>1:1 대전 오목 게임<br>방을 만들거나 참여하세요</p>
+    </div>
+    
+    <div class="game-card" onclick="createJanggiRoom()">
+        <h3>♞ 장기</h3>
+        <p>전통 장기 게임<br>친구와 두뇌 대결</p>
+    </div>
+    
+    <div class="game-card" onclick="showSettings()">
+        <h3>⚙️ 설정</h3>
+        <p>배경 이미지 변경<br>게임 설정</p>
+    </div>
+</div>
+
+<!-- 오목 메뉴 -->
+<div id="omokMenu" style="display: none; text-align: center; padding: 20px;">
+    <h3>⚫ 오목 게임</h3>
+    <div style="display: flex; gap: 20px; justify-content: center; margin: 20px 0;">
+        <div class="game-card" onclick="createOmokRoom()" style="width: 200px; margin: 0;">
+            <h4>방 만들기</h4>
+            <p>새로운 게임 방을<br>만들어 친구를 초대</p>
+        </div>
+        <div class="game-card" onclick="showJoinRoom()" style="width: 200px; margin: 0;">
+            <h4>방 참여하기</h4>
+            <p>친구가 보낸 링크로<br>게임에 참여</p>
+        </div>
+    </div>
+    <button onclick="backToMainMenu()" style="padding: 8px 16px; margin-top: 10px;">뒤로 가기</button>
+</div>
+
+<!-- 방 참여 -->
+<div id="joinRoomMenu" style="display: none; text-align: center; padding: 20px;">
+    <h3>방 참여하기</h3>
+    <p>친구에게 받은 방 링크를 입력하세요:</p>
+    <input type="text" id="roomLinkInput" placeholder="방 링크를 입력하세요..." style="width: 300px; padding: 10px; margin: 10px;">
+    <br>
+    <button onclick="joinRoomByLink()" style="margin: 5px; padding: 8px 16px;">방 입장</button>
+    <button onclick="backToOmokMenu()" style="margin: 5px; padding: 8px 16px;">뒤로 가기</button>
+</div>
+
+<!-- 방 생성 완료 -->
+<div id="roomCreated" style="display: none; text-align: center; padding: 20px;">
+    <h3>방이 생성되었습니다!</h3>
+    <p>아래 링크를 친구에게 공유하고 닉네임을 입력하여 게임에 입장하세요:</p>
+    <input type="text" id="roomUrl" readonly style="width: 80%; padding: 8px; margin: 10px; text-align: center;">
+    <br>
+    <button onclick="copyToClipboard()" style="margin: 5px; padding: 8px 16px;">링크 복사</button>
+    <br><br>
+    <div style="margin: 20px 0;">
+        <p><strong>닉네임을 입력하고 게임에 입장하세요:</strong></p>
+        <input type="text" id="hostNickname" placeholder="닉네임을 입력하세요..." maxlength="10" style="padding: 8px; margin: 5px; width: 200px;">
+        <br>
+        <button onclick="joinRoomAsHost()" style="margin: 5px; padding: 8px 16px; background: #10b981; color: white;">게임 입장</button>
+    </div>
+    <button onclick="backToOmokMenu()" style="margin: 5px; padding: 8px 16px;">뒤로 가기</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentRoomUrl = '';
+let currentRoomPath = '';
+
+function showOmokMenu() {
+    document.querySelector('.game-menu').style.display = 'none';
+    document.getElementById('omokMenu').style.display = 'block';
+}
+
+function backToMainMenu() {
+    document.querySelector('.game-menu').style.display = 'grid';
+    document.getElementById('omokMenu').style.display = 'none';
+    document.getElementById('joinRoomMenu').style.display = 'none';
+    document.getElementById('roomCreated').style.display = 'none';
+}
+
+function showJoinRoom() {
+    document.getElementById('omokMenu').style.display = 'none';
+    document.getElementById('joinRoomMenu').style.display = 'block';
+}
+
+function backToOmokMenu() {
+    document.getElementById('omokMenu').style.display = 'block';
+    document.getElementById('joinRoomMenu').style.display = 'none';
+    document.getElementById('roomCreated').style.display = 'none';
+}
+
+async function createOmokRoom() {
+    try {
+        const response = await fetch('/omok/create');
+        const data = await response.json();
+        currentRoomUrl = window.location.origin + data.url;
+        currentRoomPath = data.url;
+        showRoomCreated(currentRoomUrl);
+    } catch (error) {
+        alert('방 생성에 실패했습니다.');
+    }
+}
+
+async function createJanggiRoom() {
+    try {
+        const response = await fetch('/janggi/create');
+        const data = await response.json();
+        currentRoomUrl = window.location.origin + data.url;
+        showRoomCreated(currentRoomUrl);
+    } catch (error) {
+        alert('방 생성에 실패했습니다.');
+    }
+}
+
+function showRoomCreated(url) {
+    document.getElementById('omokMenu').style.display = 'none';
+    document.getElementById('roomCreated').style.display = 'block';
+    document.getElementById('roomUrl').value = url;
+}
+
+function joinRoomByLink() {
+    const linkInput = document.getElementById('roomLinkInput');
+    const link = linkInput.value.trim();
+    
+    if (!link) {
+        alert('방 링크를 입력해주세요.');
+        return;
+    }
+    
+    // 링크에서 경로 추출
+    try {
+        const url = new URL(link);
+        const path = url.pathname;
+        if (path.startsWith('/omok/')) {
+            window.location.href = link;
+        } else {
+            alert('올바른 오목 방 링크가 아닙니다.');
+        }
+    } catch (error) {
+        alert('올바른 링크 형식이 아닙니다.');
+    }
+}
+
+function joinRoomAsHost() {
+    const nickname = document.getElementById('hostNickname').value.trim();
+    if (!nickname) {
+        alert('닉네임을 입력해주세요.');
+        return;
+    }
+    
+    // 닉네임을 세션 스토리지에 저장하고 방으로 이동
+    sessionStorage.setItem('hostNickname', nickname);
+    window.location.href = currentRoomPath;
+}
+
+function copyToClipboard() {
+    const urlInput = document.getElementById('roomUrl');
+    urlInput.select();
+    navigator.clipboard.writeText(urlInput.value).then(() => {
+        alert('링크가 복사되었습니다!');
+    }).catch(() => {
+        // Fallback for older browsers
+        document.execCommand('copy');
+        alert('링크가 복사되었습니다!');
+    });
+}
+
+function showSettings() {
+    alert('설정 기능은 추후 구현 예정입니다.');
+}
+</script>
+{% endblock %}
