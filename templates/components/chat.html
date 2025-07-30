@@ -1,0 +1,43 @@
+<!-- 재사용 가능한 채팅 컴포넌트 -->
+{% macro chat_panel(title="채팅", height="200px") %}
+<div class="game-info-panel chat-panel">
+    <div class="chat-header">{{ title }}</div>
+    <div id="chatMessages" class="chat-messages" style="height: {{ height }};">
+        <div class="chat-empty">아직 채팅 메시지가 없습니다.</div>
+    </div>
+    <div class="chat-input-container">
+        <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." maxlength="200" autocomplete="off">
+        <button onclick="sendChatMessage()" id="chatSendButton">전송</button>
+    </div>
+</div>
+{% endmacro %}
+
+<!-- 채팅 관련 CSS와 JS 포함 -->
+{% macro chat_resources() %}
+<link rel="stylesheet" href="/static/css/chat.css">
+<script src="/static/js/chat.js"></script>
+{% endmacro %}
+
+<!-- 채팅 초기화 스크립트 -->
+{% macro chat_init_script(websocket_var="ws", nickname_var="myNickname") %}
+<script>
+// 채팅 모듈 초기화 (chat.js에서 이미 gameChat 변수가 선언되어 있으므로 재할당만)
+if (!gameChat) {
+    initGameChat();
+}
+
+// 기존 WebSocket 메시지 처리에 채팅 핸들러 추가하는 헬퍼 함수
+function handleChatWebSocketMessage(data) {
+    if (gameChat) {
+        gameChat.handleWebSocketMessage(data);
+    }
+}
+
+// WebSocket 연결 시 채팅 설정하는 헬퍼 함수
+function setupChatConnection(websocket, nickname) {
+    if (gameChat) {
+        gameChat.setConnection(websocket, nickname);
+    }
+}
+</script>
+{% endmacro %}

@@ -1,0 +1,38 @@
+services:
+  lupin:
+    build: .
+    container_name: lupin-game
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 개발 시 코드 변경사항을 실시간 반영하려면 아래 주석 해제
+      # - .:/app
+      - /app/.venv  # 가상환경 볼륨 제외
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lupin.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.lupin.tls=true
+      - traefik.http.routers.lupin.entrypoints=web,websecure
+      - traefik.http.routers.lupin.tls.certresolver=mytlschallenge
+      - traefik.http.services.lupin.loadbalancer.server.port=8000
+      - traefik.http.middlewares.lupin-headers.headers.SSLRedirect=true
+      - traefik.http.middlewares.lupin-headers.headers.STSSeconds=315360000
+      - traefik.http.middlewares.lupin-headers.headers.browserXSSFilter=true
+      - traefik.http.middlewares.lupin-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.lupin-headers.headers.forceSTSHeader=true
+      - traefik.http.middlewares.lupin-headers.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.lupin-headers.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.lupin-headers.headers.STSPreload=true
+      - traefik.http.routers.lupin.middlewares=lupin-headers@docker
+    networks:
+      - proxy_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  proxy_network:
+    external: true
