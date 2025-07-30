@@ -34,7 +34,7 @@ function initOpacityControl() {
     // 저장된 투명도 설정 로드 (우선순위)
     const savedOpacity = localStorage.getItem('gameOpacity');
     const initialOpacity = savedOpacity ? parseInt(savedOpacity) : 70; // 저장된 값이 없으면 70 사용
-
+    
     // 초기 투명도 설정
     slider.value = initialOpacity;
     setOverlayOpacity(initialOpacity);
@@ -52,13 +52,11 @@ function setOverlayOpacity(opacity) {
     const valueDisplay = document.getElementById('opacityValue');
     
     if (overlay && valueDisplay) {
-        const alphaValue = opacity / 100;
-        // 전체 오버레이의 opacity 설정 (내부 모든 요소에 적용)
-        overlay.style.opacity = alphaValue.toString();
-        valueDisplay.textContent = `${opacity}%`;
+        overlay.style.opacity = opacity / 100;
+        valueDisplay.textContent = opacity + '%';
         
-        // 설정 저장
-        localStorage.setItem('gameOpacity', opacity.toString());
+        // 로컬 스토리지에 저장
+        localStorage.setItem('gameOpacity', opacity);
     }
 }
 
@@ -69,7 +67,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// 엑셀 셀 클릭 효과 및 투명도 컨트롤 초기화
+// DOMContentLoaded 이벤트 리스너
 document.addEventListener('DOMContentLoaded', function() {
     // 엑셀 셀 클릭 효과
     document.querySelectorAll('.excel-cell').forEach(cell => {

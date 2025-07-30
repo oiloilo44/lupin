@@ -69,6 +69,12 @@ class GameChat {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (!chatMessages) return;
         
+        // 빈 메시지 제거
+        const emptyMessage = chatMessages.querySelector('.chat-empty');
+        if (emptyMessage) {
+            emptyMessage.remove();
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
         
@@ -100,9 +106,14 @@ class GameChat {
         
         chatMessages.innerHTML = '';
         
-        chatHistory.forEach(msg => {
-            this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
-        });
+        if (chatHistory && chatHistory.length > 0) {
+            chatHistory.forEach(msg => {
+                this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
+            });
+        } else {
+            // 채팅 히스토리가 없으면 빈 메시지 표시
+            chatMessages.innerHTML = '<div class="chat-empty">아직 채팅 메시지가 없습니다.</div>';
+        }
     }
     
     /**
@@ -111,7 +122,7 @@ class GameChat {
     clear() {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (chatMessages) {
-            chatMessages.innerHTML = '';
+            chatMessages.innerHTML = '<div class="chat-empty">아직 채팅 메시지가 없습니다.</div>';
         }
     }
     
