@@ -8,3 +8,6 @@ wheels/
 
 # Dot files and directories
 /.*
+
+# md files without README.md
+/*.md

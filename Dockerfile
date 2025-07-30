@@ -5,13 +5,14 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # UV 설치 (고성능 Python 패키지 매니저)
-RUN pip install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # 의존성 파일 복사
 COPY pyproject.toml uv.lock ./
 
 # 의존성 설치
-RUN uv sync --frozen
+RUN uv export --no-dev  > requirements.txt && \
+    uv pip install --system -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY . .
@@ -19,5 +20,5 @@ COPY . .
 # 포트 노출
 EXPOSE 8000
 
-# 애플리케이션 실행
-CMD ["uv", "run", "python", "main.py"]
+# 애플리케이션 실행 (시스템 Python 직접 사용)
+CMD ["python", "main.py"]
