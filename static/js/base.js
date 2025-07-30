@@ -23,22 +23,62 @@ function toggleWorkMode() {
     }
 }
 
+// 투명도 조절 기능
+function initOpacityControl() {
+    const slider = document.getElementById('opacitySlider');
+    const valueDisplay = document.getElementById('opacityValue');
+    const overlay = document.getElementById('gameOverlay');
+    
+    if (!slider || !valueDisplay || !overlay) return;
+    
+    // 저장된 투명도 설정 로드 (우선순위)
+    const savedOpacity = localStorage.getItem('gameOpacity');
+    const initialOpacity = savedOpacity ? parseInt(savedOpacity) : 70; // 저장된 값이 없으면 70 사용
+
+    // 초기 투명도 설정
+    slider.value = initialOpacity;
+    setOverlayOpacity(initialOpacity);
+    
+    // 슬라이더 이벤트 리스너
+    slider.addEventListener('input', function() {
+        const opacity = parseInt(this.value);
+        setOverlayOpacity(opacity);
+    });
+}
+
+// 오버레이 투명도 설정
+function setOverlayOpacity(opacity) {
+    const overlay = document.getElementById('gameOverlay');
+    const valueDisplay = document.getElementById('opacityValue');
+    
+    if (overlay && valueDisplay) {
+        const alphaValue = opacity / 100;
+        // 전체 오버레이의 opacity 설정 (내부 모든 요소에 적용)
+        overlay.style.opacity = alphaValue.toString();
+        valueDisplay.textContent = `${opacity}%`;
+        
+        // 설정 저장
+        localStorage.setItem('gameOpacity', opacity.toString());
+    }
+}
+
 // 키보드 단축키
 document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.key === 'Tab') {
-        e.preventDefault();
-        hideGame();
-    } else if (e.key === 'Escape') {
-        showGame();
+    if (e.key === 'Escape') {
+        toggleWorkMode();
     }
 });
 
-// 엑셀 셀 클릭 효과
+// 엑셀 셀 클릭 효과 및 투명도 컨트롤 초기화
 document.addEventListener('DOMContentLoaded', function() {
+    // 엑셀 셀 클릭 효과
     document.querySelectorAll('.excel-cell').forEach(cell => {
         cell.addEventListener('click', function() {
             document.querySelectorAll('.excel-cell.selected').forEach(c => c.classList.remove('selected'));
             this.classList.add('selected');
         });
     });
+    
+    // 투명도 컨트롤 초기화
+    initOpacityControl();
 });

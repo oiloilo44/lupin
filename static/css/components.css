@@ -180,3 +180,103 @@
     color: #6b7280;
     margin-top: 2px;
 }
+
+/* 게임 정보 패널 */
+.game-info-panel {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.game-info-panel h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 6px;
+}
+
+/* 게임 통계 개선 */
+.game-stats {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.game-stats .stat-item {
+    flex: 1;
+    padding: 6px;
+    margin: 0;
+}
+
+.game-stats .stat-value {
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+/* 플레이어 정보 */
+.player-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.player-item.active {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.player-item.my-turn {
+    background: #dbeafe;
+    border-color: #3b82f6;
+}
+
+.player-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.player-stone {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.stone-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid #333;
+}
+
+.stone-indicator.black {
+    background: #000;
+}
+
+.stone-indicator.white {
+    background: #fff;
+}
+
+/* 현재 턴 표시 */
+#currentTurn {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    padding: 4px 0;
+}
+

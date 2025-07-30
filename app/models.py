@@ -19,6 +19,7 @@ class GameStatus(str, Enum):
 class Player:
     nickname: str
     player_number: int
+    color: Optional[int] = None  # 1: 흑돌, 2: 백돌
 
 
 @dataclass
@@ -57,6 +58,14 @@ class MoveHistoryEntry:
 
 
 @dataclass
+class ChatMessage:
+    nickname: str
+    message: str
+    timestamp: str
+    player_number: int
+
+
+@dataclass
 class Room:
     room_id: str
     game_type: GameType
@@ -67,12 +76,17 @@ class Room:
     winner: Optional[int] = None
     move_history: List[MoveHistoryEntry] = None
     undo_requests: Dict = None
+    games_played: int = 0  # 게임 횟수
+    last_winner: Optional[int] = None  # 마지막 게임 승자
+    chat_history: List[ChatMessage] = None  # 채팅 히스토리
     
     def __post_init__(self):
         if self.move_history is None:
             self.move_history = []
         if self.undo_requests is None:
             self.undo_requests = {}
+        if self.chat_history is None:
+            self.chat_history = []
     
     def add_player(self, nickname: str) -> Optional[Player]:
         """플레이어 추가"""
@@ -120,6 +134,10 @@ class MessageType(str, Enum):
     RESTART_REJECTED = "restart_rejected"
     UNDO_ACCEPTED = "undo_accepted"
     UNDO_REJECTED = "undo_rejected"
+    
+    # 채팅
+    CHAT_MESSAGE = "chat_message"
+    CHAT_BROADCAST = "chat_broadcast"
     
     # 에러
     ERROR = "error"

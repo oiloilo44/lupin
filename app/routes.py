@@ -5,6 +5,7 @@ import json
 
 from .room_manager import room_manager
 from .websocket_handler import websocket_handler
+from .models import GameType
 
 # 라우터 설정
 router = APIRouter()
@@ -27,7 +28,7 @@ async def slither_game(request: Request):
 @router.get("/omok/create")
 async def create_omok_room():
     """오목 방 생성"""
-    room_id, url = room_manager.create_omok_room()
+    room_id, url = room_manager.create_room(GameType.OMOK)
     return {"room_id": room_id, "url": url}
 
 
@@ -47,7 +48,7 @@ async def omok_room(request: Request, room_id: str):
 @router.get("/janggi/create")
 async def create_janggi_room():
     """장기 방 생성"""
-    room_id, url = room_manager.create_janggi_room()
+    room_id, url = room_manager.create_room(GameType.JANGGI)
     return {"room_id": room_id, "url": url}
 
 

@@ -57,8 +57,8 @@ class OmokGame:
                 else:
                     break
             
-            if count >= 5:
-                return win_line[:5]  # 정확히 5개만 반환
+            if count == 5:
+                return win_line  # 정확히 5개만 반환
         
         return None
     

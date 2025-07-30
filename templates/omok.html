@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/chat.html" import chat_panel, chat_resources, chat_init_script %}
 
 {% block content %}
 <div id="nicknameForm" class="nickname-form">
@@ -13,10 +14,10 @@
     
     <div id="gameLayout" style="display: flex; gap: 20px;">
         <div style="flex: 1;">
-            <canvas id="omokBoard" width="450" height="450" style="border: 2px solid #333; background: #deb887; cursor: pointer; touch-action: none;"></canvas>
+            <canvas id="omokBoard" width="450" height="450" style="border: 2px solid #333; background: #ffffff; cursor: pointer; touch-action: none;"></canvas>
         </div>
         
-        <div style="width: 220px;">
+        <div style="width: 180px;">
             <div class="game-info-panel">
                 <h4>플레이어</h4>
                 <div id="playerList"></div>
@@ -43,7 +44,12 @@
         </div>
     </div>
     
-    <div style="margin-top: 20px; text-align: center;">
+    <!-- 하단 채팅 영역 -->
+    <div style="margin-top: 20px; max-width: 600px;">
+        {{ chat_panel(title="게임 채팅", height="120px") }}
+    </div>
+    
+    <div style="margin-top: 15px; text-align: center;">
         <button onclick="requestUndo()" id="undoButton" style="padding: 8px 16px; margin: 5px;" disabled>무르기</button>
         <button onclick="requestRestart()" style="padding: 8px 16px; margin: 5px;">게임 재시작</button>
         <button onclick="confirmLeaveRoom()" style="padding: 8px 16px; margin: 5px;">방 나가기</button>
@@ -72,7 +78,12 @@
 <div class="confetti-container" id="confettiContainer"></div>
 {% endblock %}
 
+{% block extra_css %}
+{{ chat_resources() }}
+{% endblock %}
+
 {% block extra_js %}
+{{ chat_init_script() }}
 <script>
 const canvas = document.getElementById('omokBoard');
 const ctx = canvas.getContext('2d');
@@ -93,6 +104,7 @@ let stoneAnimations = new Map();
 let gameStats = { moves: 0, startTime: null };
 let waitingForUndo = false;
 let winnerNumber = null;
+let myNickname = null;
 
 // 오목판 그리기
 function drawBoard() {
@@ -104,7 +116,7 @@ function drawBoard() {
     const margin = (boardSize - cellSize * 14) / 2;
     
     // 배경
-    ctx.fillStyle = '#deb887';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // 격자 그리기
@@ -135,7 +147,8 @@ function drawBoard() {
     });
     
     // 마우스 오버 미리보기 (실제 돌 그리기 전에)
-    if (hoverPosition && !gameEnded && players.length === 2 && gameState.currentPlayer === myPlayerNumber) {
+    const myPlayer = players.find(p => p.player_number === myPlayerNumber);
+    if (hoverPosition && !gameEnded && players.length === 2 && myPlayer && gameState.currentPlayer === myPlayer.color) {
         const [hx, hy] = hoverPosition;
         if (gameState.board[hy][hx] === 0) {
             const stoneRadius = Math.max(8, cellSize * 0.4);
@@ -236,8 +249,8 @@ function checkWin(board, x, y, player) {
             }
         }
         
-        if (count >= 5) {
-            return winLine.slice(0, 5); // 정확히 5개만 반환
+        if (count == 5) {
+            return winLine; // 정확히 5개만 반환
         }
     }
     
@@ -346,7 +359,8 @@ function showRestartRequestModal(requesterName) {
 
 // 마우스 이벤트 추가
 function handleHover(e) {
-    if (!ws || players.length < 2 || gameState.currentPlayer !== myPlayerNumber || gameEnded) {
+    const myPlayer = players.find(p => p.player_number === myPlayerNumber);
+    if (!ws || players.length < 2 || !myPlayer || gameState.currentPlayer !== myPlayer.color || gameEnded) {
         hoverPosition = null;
         drawBoard();
         return;
@@ -403,7 +417,8 @@ function getEventPosition(e) {
 
 function handleGameMove(e) {
     e.preventDefault();
-    if (!ws || players.length < 2 || gameState.currentPlayer !== myPlayerNumber || gameEnded) {
+    const myPlayer = players.find(p => p.player_number === myPlayerNumber);
+    if (!ws || players.length < 2 || !myPlayer || gameState.currentPlayer !== myPlayer.color || gameEnded) {
         return;
     }
     
@@ -412,8 +427,8 @@ function handleGameMove(e) {
     const y = pos.y;
     
     if (x >= 0 && x < 15 && y >= 0 && y < 15 && gameState.board[y][x] === 0) {
-        // 돌 놓기
-        gameState.board[y][x] = myPlayerNumber;
+        // 돌 놓기 - 플레이어의 색상으로
+        gameState.board[y][x] = myPlayer.color;
         lastMove = {x, y};
         
         // 총 수 횟수를 보드의 돌 개수로 계산
@@ -427,14 +442,14 @@ function handleGameMove(e) {
         }
         
         // 승리 확인
-        const winLine = checkWin(gameState.board, x, y, myPlayerNumber);
+        const winLine = checkWin(gameState.board, x, y, myPlayer.color);
         if (winLine) {
             gameEnded = true;
             winningLine = winLine;
             createConfetti(); // 승리 축하 효과
             ws.send(JSON.stringify({
                 type: 'game_end',
-                winner: myPlayerNumber,
+                winner: myPlayer.player_number,  // 승자는 player_number로 전송
                 game_state: gameState,
                 last_move: lastMove,
                 winning_line: winLine
@@ -478,6 +493,8 @@ function joinGame() {
     
     ws.onopen = function() {
         console.log('WebSocket connected, sending join message');
+        myNickname = nickname; // 닉네임 저장
+        setupChatConnection(ws, nickname); // 채팅 연결 설정
         ws.send(JSON.stringify({
             type: 'join',
             nickname: nickname
@@ -488,11 +505,15 @@ function joinGame() {
         const data = JSON.parse(event.data);
         console.log('Received WebSocket message:', data);
         
+        // 채팅 메시지 처리
+        handleChatWebSocketMessage(data);
+        
         if (data.type === 'room_update') {
             players = data.room.players;
             if (myPlayerNumber === null) {
                 myPlayerNumber = players.find(p => p.nickname === nickname)?.player_number;
             }
+            
             updateUI();
             
             if (players.length === 1) {
@@ -574,14 +595,19 @@ function joinGame() {
             winningLine = null;
             winnerNumber = null;
             gameStats = { moves: 0, startTime: Date.now() };
-            gameState = {
-                board: Array(15).fill(null).map(() => Array(15).fill(0)),
-                currentPlayer: 1
-            };
+            gameState = data.game_state;
+            
+            // 플레이어 색상 정보 업데이트
+            if (data.players) {
+                players = data.players;
+            }
+            
             hideModal(); // 요청자의 대기 모달 자동 닫기
             drawBoard();
             updateUI();
-            showToast('게임 재시작', '새로운 게임이 시작되었습니다!', 'success');
+            
+            const gameNum = data.games_played || 1;
+            showToast('게임 재시작', `${gameNum}번째 게임이 시작되었습니다!`, 'success');
         } else if (data.type === 'restart_rejected') {
             waitingForRestart = false;
             showModal('알림', '상대방이 재시작을 거부했습니다.', [
@@ -671,24 +697,24 @@ function updateUI() {
             <div class="${itemClass}">
                 <div class="player-name">${p.nickname}${isMe ? ' (나)' : ''}</div>
                 <div class="player-stone">
-                    <span class="stone-indicator ${p.player_number === 1 ? 'black' : 'white'}"></span>
-                    ${p.player_number === 1 ? '흑돌' : '백돌'}
+                    <span class="stone-indicator ${p.color === 1 ? 'black' : 'white'}"></span>
+                    ${p.color === 1 ? '흑돌' : '백돌'}
                 </div>
             </div>
         `;
     }).join('');
     
-    // 현재 턴 표시
+    // 현재 턴 표시 - 색상 기준으로 변경
     const currentTurn = document.getElementById('currentTurn');
-    const currentPlayer = players.find(p => p.player_number === gameState.currentPlayer);
+    const currentPlayer = players.find(p => p.color === gameState.currentPlayer);
     if (currentPlayer) {
         const isMyTurn = currentPlayer.player_number === myPlayerNumber;
         currentTurn.innerHTML = `
             <div class="player-item ${isMyTurn ? 'my-turn' : 'active'}">
                 <div class="player-name">${currentPlayer.nickname}${isMyTurn ? ' (나)' : ''}</div>
                 <div class="player-stone">
-                    <span class="stone-indicator ${currentPlayer.player_number === 1 ? 'black' : 'white'}"></span>
-                    ${currentPlayer.player_number === 1 ? '흑돌' : '백돌'}
+                    <span class="stone-indicator ${currentPlayer.color === 1 ? 'black' : 'white'}"></span>
+                    ${currentPlayer.color === 1 ? '흑돌' : '백돌'}
                 </div>
             </div>
         `;
@@ -754,7 +780,8 @@ function requestUndo() {
         return;
     }
     
-    if (gameState.currentPlayer === myPlayerNumber) {
+    const myPlayer = players.find(p => p.player_number === myPlayerNumber);
+    if (myPlayer && gameState.currentPlayer === myPlayer.color) {
         showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.', [
             { text: '확인', class: 'primary', onclick: hideModal }
         ]);
@@ -799,8 +826,9 @@ function showUndoRequestModal(requesterName) {
 function updateUndoButton() {
     const undoButton = document.getElementById('undoButton');
     if (undoButton) {
+        const myPlayer = players.find(p => p.player_number === myPlayerNumber);
         const canUndo = ws && !gameEnded && !waitingForUndo && 
-                       gameStats.moves > 0 && gameState.currentPlayer !== myPlayerNumber;
+                       gameStats.moves > 0 && myPlayer && gameState.currentPlayer !== myPlayer.color;
         undoButton.disabled = !canUndo;
         undoButton.style.opacity = canUndo ? '1' : '0.5';
     }

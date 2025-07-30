@@ -1,8 +1,9 @@
 import json
+from datetime import datetime
 from typing import Dict, Any
 from fastapi import WebSocket
 
-from .models import MessageType, WebSocketMessage, GameMove, OmokGameState
+from .models import MessageType, WebSocketMessage, GameMove, OmokGameState, ChatMessage
 from .room_manager import room_manager
 from .games.omok import OmokGame
 
@@ -28,6 +29,8 @@ class WebSocketHandler:
             await self._handle_undo_request(websocket, room_id, message)
         elif message_type == MessageType.UNDO_RESPONSE:
             await self._handle_undo_response(websocket, room_id, message)
+        elif message_type == MessageType.CHAT_MESSAGE:
+            await self._handle_chat_message(websocket, room_id, message)
     
     async def _handle_join(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
         """플레이어 참여 처리"""
@@ -37,6 +40,9 @@ class WebSocketHandler:
         
         player = room.add_player(message["nickname"])
         if player:
+            # 두 번째 플레이어 참여 시 색상 배정
+            if len(room.players) == 2:
+                room_manager.assign_colors(room)
             await self._broadcast_room_update(room_id, room)
     
     async def _handle_move(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
@@ -77,6 +83,7 @@ class WebSocketHandler:
         
         room.game_ended = True
         room.winner = message["winner"]
+        room.last_winner = message["winner"]  # 다음 게임 색상 배정을 위해 저장
         
         # 게임 상태 업데이트
         client_game_state = message["game_state"]
@@ -142,8 +149,8 @@ class WebSocketHandler:
             return
         
         if message["accepted"]:
-            # 재시작 승인
-            room_manager.reset_omok_game(room_id)
+            # 재시작 승인 - 모든 플레이어에게 알림
+            room_manager.reset_game(room_id)
             
             response = WebSocketMessage(
                 type=MessageType.RESTART_ACCEPTED,
@@ -151,17 +158,31 @@ class WebSocketHandler:
                     "game_state": {
                         "board": room.game_state["board"],
                         "currentPlayer": room.game_state["current_player"]
-                    }
+                    },
+                    "players": [
+                        {"nickname": p.nickname, "player_number": p.player_number, "color": p.color}
+                        for p in room.players
+                    ],
+                    "games_played": room.games_played
                 }
             )
+            await self._broadcast_to_room(room_id, response.to_json())
         else:
-            # 재시작 거부
-            response = WebSocketMessage(
+            # 재시작 거부 - 요청자에게만 알림
+            connections = room_manager.get_room_connections(room_id)
+            rejection_response = WebSocketMessage(
                 type=MessageType.RESTART_REJECTED,
                 data={}
             )
-        
-        await self._broadcast_to_room(room_id, response.to_json())
+            
+            # 현재 웹소켓(거부한 사람)을 제외하고 다른 모든 연결에 전송
+            for ws in connections:
+                if ws != websocket:  # 거부한 사람은 제외
+                    try:
+                        await ws.send_text(json.dumps(rejection_response.to_json()))
+                    except:
+                        # 연결이 끊어진 경우 무시
+                        pass
     
     async def _handle_undo_request(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
         """무르기 요청 처리"""
@@ -260,6 +281,49 @@ class WebSocketHandler:
         # 무르기 요청 정보 초기화
         room.undo_requests.clear()
     
+    async def _handle_chat_message(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
+        """채팅 메시지 처리"""
+        room = room_manager.get_room(room_id)
+        if not room:
+            return
+        
+        # 발신자 확인
+        sender_nickname = message.get("nickname", "")
+        sender = None
+        for player in room.players:
+            if player.nickname == sender_nickname:
+                sender = player
+                break
+        
+        if not sender:
+            return
+        
+        # 채팅 메시지 생성
+        chat_message = ChatMessage(
+            nickname=sender.nickname,
+            message=message.get("message", ""),
+            timestamp=datetime.now().strftime("%H:%M:%S"),
+            player_number=sender.player_number
+        )
+        
+        # 채팅 히스토리에 추가 (최근 50개만 유지)
+        room.chat_history.append(chat_message)
+        if len(room.chat_history) > 50:
+            room.chat_history.pop(0)
+        
+        # 모든 플레이어에게 브로드캐스트
+        response = WebSocketMessage(
+            type=MessageType.CHAT_BROADCAST,
+            data={
+                "nickname": chat_message.nickname,
+                "message": chat_message.message,
+                "timestamp": chat_message.timestamp,
+                "player_number": chat_message.player_number
+            }
+        )
+        
+        await self._broadcast_to_room(room_id, response.to_json())
+    
     async def _broadcast_room_update(self, room_id: str, room):
         """방 상태 업데이트 브로드캐스트"""
         response = WebSocketMessage(
@@ -268,13 +332,22 @@ class WebSocketHandler:
                 "room": {
                     "game_type": room.game_type.value,
                     "players": [
-                        {"nickname": p.nickname, "player_number": p.player_number}
+                        {"nickname": p.nickname, "player_number": p.player_number, "color": p.color}
                         for p in room.players
                     ],
                     "game_state": room.game_state,
                     "status": room.status.value,
                     "game_ended": room.game_ended,
-                    "winner": room.winner
+                    "winner": room.winner,
+                    "games_played": room.games_played,
+                    "chat_history": [
+                        {
+                            "nickname": msg.nickname,
+                            "message": msg.message,
+                            "timestamp": msg.timestamp,
+                            "player_number": msg.player_number
+                        } for msg in room.chat_history
+                    ]
                 }
             }
         )

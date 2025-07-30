@@ -8,6 +8,7 @@ wheels/
 
 # Dot files and directories
 /.*
+!/.dockerignore
 
 # md files without README.md
 /*.md

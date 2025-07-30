@@ -52,7 +52,19 @@
     
     <!-- 게임 오버레이 -->
     <div class="game-overlay" id="gameOverlay">
-        {% block content %}{% endblock %}
+        <!-- 투명도 조절 컨트롤 -->
+        <div class="opacity-control">
+            <span class="opacity-label">투명도</span>
+            <div class="opacity-slider-container">
+                <input type="range" class="opacity-slider" id="opacitySlider" 
+                       min="10" max="100" value="70" step="5">
+                <span class="opacity-value" id="opacityValue">70%</span>
+            </div>
+        </div>
+        
+        <div class="game-content">
+            {% block content %}{% endblock %}
+        </div>
     </div>
     
     <!-- 빠른 숨김 버튼 -->

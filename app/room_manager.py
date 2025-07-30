@@ -3,6 +3,8 @@ from typing import Dict, Set, Optional
 from fastapi import WebSocket
 
 from .models import Room, GameType, GameStatus, OmokGameState
+from .games.omok_manager import OmokManager
+from .games.janggi_manager import JanggiManager
 
 
 class RoomManager:
@@ -11,46 +13,23 @@ class RoomManager:
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
         self.connections: Dict[str, Set[WebSocket]] = {}
+        self.game_managers = {
+            GameType.OMOK: OmokManager(),
+            GameType.JANGGI: JanggiManager(),
+        }
     
-    def create_omok_room(self) -> tuple[str, str]:
-        """오목 방 생성"""
+    def create_room(self, game_type: GameType) -> tuple[str, str]:
+        """게임 방 생성 (통합 메서드)"""
         room_id = str(uuid.uuid4())[:8]
         
-        room = Room(
-            room_id=room_id,
-            game_type=GameType.OMOK,
-            players=[],
-            game_state={
-                "board": [[0 for _ in range(15)] for _ in range(15)],
-                "current_player": 1
-            },
-            status=GameStatus.WAITING
-        )
+        game_manager = self.game_managers[game_type]
+        room = game_manager.create_room(room_id)
         
         self.rooms[room_id] = room
         self.connections[room_id] = set()
         
-        return room_id, f"/omok/{room_id}"
+        return room_id, game_manager.get_url_path(room_id)
     
-    def create_janggi_room(self) -> tuple[str, str]:
-        """장기 방 생성"""
-        room_id = str(uuid.uuid4())[:8]
-        
-        room = Room(
-            room_id=room_id,
-            game_type=GameType.JANGGI,
-            players=[],
-            game_state={
-                "board": None,
-                "current_player": "red"
-            },
-            status=GameStatus.WAITING
-        )
-        
-        self.rooms[room_id] = room
-        self.connections[room_id] = set()
-        
-        return room_id, f"/janggi/{room_id}"
     
     def get_room(self, room_id: str) -> Optional[Room]:
         """방 조회"""
@@ -81,18 +60,18 @@ class RoomManager:
         """방의 모든 연결 조회"""
         return self.connections.get(room_id, set())
     
-    def reset_omok_game(self, room_id: str):
-        """오목 게임 재시작"""
+    def reset_game(self, room_id: str):
+        """게임 재시작 (통합 메서드)"""
         room = self.rooms.get(room_id)
-        if room and room.game_type == GameType.OMOK:
-            room.game_ended = False
-            room.winner = None
-            room.game_state = {
-                "board": [[0 for _ in range(15)] for _ in range(15)],
-                "current_player": 1
-            }
-            room.move_history = []
-            room.undo_requests = {}
+        if room:
+            game_manager = self.game_managers[room.game_type]
+            game_manager.reset_game(room)
+    
+    def assign_colors(self, room: Room):
+        """플레이어 색상 배정 (게임 매니저에 위임)"""
+        game_manager = self.game_managers[room.game_type]
+        game_manager.assign_colors(room)
+    
 
 
 # 전역 방관리자 인스턴스
