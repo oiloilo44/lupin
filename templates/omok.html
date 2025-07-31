@@ -624,8 +624,20 @@ function handleWebSocketMessage(event) {
     if (data.type === 'room_update') {
         players = data.room.players;
         if (myPlayerNumber === null && players.length > 0) {
-            const currentNickname = document.getElementById('nicknameInput').value.trim();
-            myPlayerNumber = players.find(p => p.nickname === currentNickname)?.player_number;
+            const currentNickname = myNickname || document.getElementById('nicknameInput').value.trim();
+            const myPlayer = players.find(p => p.nickname === currentNickname);
+            if (myPlayer) {
+                myPlayerNumber = myPlayer.player_number;
+                
+                // 세션 정보 업데이트 (플레이어 번호 추가)
+                saveGameSession({
+                    nickname: currentNickname,
+                    sessionId: sessionId,
+                    playerNumber: myPlayerNumber,
+                    color: myPlayer.color,
+                    joinedAt: Date.now()
+                });
+            }
         }
         updateUI();
         
@@ -641,23 +653,36 @@ function handleWebSocketMessage(event) {
         }
     } else if (data.type === 'reconnect_success') {
         // 게임 상태 복원
-        if (data.game_state) {
-            gameState = data.game_state;
+        if (data.room && data.room.game_state) {
+            gameState = data.room.game_state;
         }
-        if (data.last_move) {
-            lastMove = data.last_move;
+        if (data.room && data.room.players) {
+            players = data.room.players;
         }
-        if (data.game_stats) {
-            gameStats = data.game_stats;
+        if (data.player) {
+            myPlayerNumber = data.player.player_number;
         }
-        if (data.game_ended !== undefined) {
-            gameEnded = data.game_ended;
+        if (data.room && data.room.game_ended !== undefined) {
+            gameEnded = data.room.game_ended;
         }
-        if (data.winning_line) {
-            winningLine = data.winning_line;
+        if (data.room && data.room.winner) {
+            winnerNumber = data.room.winner;
         }
-        if (data.winner) {
-            winnerNumber = data.winner;
+        
+        // 채팅 히스토리 복원
+        if (data.room && data.room.chat_history) {
+            // 채팅 메시지들을 채팅 시스템에 복원
+            data.room.chat_history.forEach(msg => {
+                if (typeof displayChatMessage === 'function') {
+                    displayChatMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number === myPlayerNumber);
+                }
+            });
+        }
+        
+        // 무브 히스토리에서 마지막 수 복원
+        if (data.move_history && data.move_history.length > 0) {
+            const lastMoveEntry = data.move_history[data.move_history.length - 1];
+            lastMove = lastMoveEntry.move;
         }
         
         // 총 수 횟수를 보드의 돌 개수로 계산
@@ -841,6 +866,13 @@ function joinGame() {
                 nickname: nickname,
                 session_id: sessionId
             }));
+            
+            // 세션 정보 저장
+            saveGameSession({
+                nickname: nickname,
+                sessionId: sessionId,
+                joinedAt: Date.now()
+            });
         } else {
             setTimeout(waitForConnection, 100);
         }
@@ -851,27 +883,42 @@ function joinGame() {
 
 // 기존 게임 이어하기
 function continueExistingGame() {
-    connectWebSocket(true); // 재연결로 처리
+    if (window.pendingSessionData) {
+        // 기존 세션 데이터 복원
+        myNickname = window.pendingSessionData.nickname;
+        myPlayerNumber = window.pendingSessionData.playerNumber;
+        
+        // WebSocket 연결하고 재연결 시도
+        connectWebSocket();
+        
+        const waitForConnection = () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Attempting reconnection with session:', window.pendingSessionData.sessionId);
+                // 재연결 메시지 전송
+                ws.send(JSON.stringify({
+                    type: 'reconnect',
+                    session_id: window.pendingSessionData.sessionId
+                }));
+            } else {
+                setTimeout(waitForConnection, 100);
+            }
+        };
+        
+        waitForConnection();
+    }
 }
 
 // 새 게임 시작
 function startNewGame() {
-    // 새 게임을 위해 세션 초기화를 서버에 요청
-    fetch(`/omok/${roomId}/reset_session`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(() => {
-        // 새 게임으로 진행
-        document.getElementById('existingGameForm').style.display = 'none';
-        document.getElementById('nicknameForm').style.display = 'block';
-    }).catch(error => {
-        console.error('Session reset failed:', error);
-        // 실패해도 새 게임으로 진행
-        document.getElementById('existingGameForm').style.display = 'none';
-        document.getElementById('nicknameForm').style.display = 'block';
-    });
+    // 로컬 세션 정보 삭제
+    clearGameSession();
+    
+    // UI를 닉네임 입력 화면으로 전환
+    document.getElementById('existingGameForm').style.display = 'none';
+    document.getElementById('nicknameForm').style.display = 'block';
+    
+    // 기존 세션 데이터 초기화
+    window.pendingSessionData = null;
 }
 
 function updateUI() {
@@ -1034,6 +1081,9 @@ function confirmLeaveRoom() {
         '방 나가기',
         '정말로 게임에서 나가시겠습니까?<br>진행 중인 게임이 종료됩니다.',
         () => {
+            // 세션 정보 삭제
+            clearGameSession();
+            
             if (ws) {
                 ws.close();
             }
@@ -1167,18 +1217,87 @@ window.addEventListener('orientationchange', function() {
     setTimeout(adjustMobileLayout, 100);
 });
 
+// 로컬 스토리지 키
+const STORAGE_KEYS = {
+    GAME_SESSION: 'omokGameSession',
+    ROOM_DATA: 'omokRoomData'
+};
+
+// 게임 세션 저장
+function saveGameSession(sessionData) {
+    try {
+        localStorage.setItem(STORAGE_KEYS.GAME_SESSION, JSON.stringify({
+            ...sessionData,
+            timestamp: Date.now(),
+            roomId: roomId
+        }));
+    } catch (error) {
+        console.error('Failed to save game session:', error);
+    }
+}
+
+// 게임 세션 불러오기
+function loadGameSession() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEYS.GAME_SESSION);
+        if (!data) return null;
+        
+        const session = JSON.parse(data);
+        
+        // 24시간 초과된 세션은 삭제
+        if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem(STORAGE_KEYS.GAME_SESSION);
+            return null;
+        }
+        
+        // 같은 방인지 확인
+        if (session.roomId !== roomId) {
+            return null;
+        }
+        
+        return session;
+    } catch (error) {
+        console.error('Failed to load game session:', error);
+        return null;
+    }
+}
+
+// 게임 세션 삭제
+function clearGameSession() {
+    try {
+        localStorage.removeItem(STORAGE_KEYS.GAME_SESSION);
+        localStorage.removeItem(STORAGE_KEYS.ROOM_DATA);
+    } catch (error) {
+        console.error('Failed to clear game session:', error);
+    }
+}
+
 // 세션 확인 및 초기화
 function checkExistingSession() {
     const hostNickname = sessionStorage.getItem('hostNickname');
     
     // 서버에서 전달된 게임 상태나 플레이어 데이터가 있는지 확인
-    const gameState = {{ game_state | tojson | safe }};
-    const playerData = {{ player_data | tojson | safe }};
+    const serverGameState = {{ game_state | tojson | safe }};
+    const serverPlayerData = {{ player_data | tojson | safe }};
     
-    if (playerData && playerData.nickname) {
-        // 기존 세션이 있는 경우
-        document.getElementById('existingGameForm').style.display = 'block';
-        document.getElementById('nicknameForm').style.display = 'none';
+    // 로컬 스토리지에서 기존 게임 세션 확인
+    const localSession = loadGameSession();
+    
+    if (localSession && localSession.nickname && localSession.sessionId) {
+        // 로컬 스토리지에 기존 게임 세션이 있는 경우
+        console.log('Found local game session:', localSession);
+        showExistingGamePrompt(localSession);
+        return;
+    }
+    
+    if (serverPlayerData && serverPlayerData.nickname) {
+        // 서버에서 전달된 세션이 있는 경우
+        console.log('Found server session:', serverPlayerData);
+        showExistingGamePrompt({
+            nickname: serverPlayerData.nickname,
+            sessionId: sessionId,
+            playerNumber: serverPlayerData.player_number
+        });
         return;
     }
     
@@ -1196,6 +1315,20 @@ function checkExistingSession() {
         // 사용 후 제거
         sessionStorage.removeItem('hostNickname');
     }
+}
+
+// 기존 게임 발견 UI 표시
+function showExistingGamePrompt(sessionData) {
+    document.getElementById('nicknameForm').style.display = 'none';
+    document.getElementById('existingGameForm').style.display = 'block';
+    
+    // 기존 게임 정보 표시
+    const existingGameForm = document.getElementById('existingGameForm');
+    existingGameForm.querySelector('p').innerHTML = 
+        `진행 중인 게임이 있습니다. (${sessionData.nickname})<br>어떻게 하시겠습니까?`;
+    
+    // 전역 변수에 세션 데이터 저장
+    window.pendingSessionData = sessionData;
 }
 
 // 페이지 로드 시 연결 상태 확인 및 자동 재연결

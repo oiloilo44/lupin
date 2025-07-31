@@ -154,23 +154,22 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
 async def _handle_disconnect(room_id: str, websocket: WebSocket):
     """WebSocket 연결 해제 처리"""
-    # 연결이 끊어진 플레이어 찾기
-    room = room_manager.get_room(room_id)
-    if room:
-        # 연결된 WebSocket으로 플레이어 찾기
-        disconnected_player = None
-        connections = room_manager.get_room_connections(room_id)
-        
-        if websocket in connections:
-            # 해당 WebSocket과 연결된 플레이어를 찾기 위한 임시 로직
-            # 실제로는 WebSocket과 플레이어를 매핑하는 더 정확한 방법이 필요
-            for player in room.players:
-                if player.is_connected:
-                    disconnected_player = player
-                    break
+    # WebSocket에서 세션 ID 찾기
+    session_id = room_manager.get_session_id_by_websocket(websocket)
     
-    # 연결 제거
-    room_manager.remove_connection(room_id, websocket)
+    # 연결이 끊어진 플레이어 찾기
+    disconnected_player = None
+    room = room_manager.get_room(room_id)
+    
+    if room and session_id:
+        # 세션 ID로 플레이어 찾기
+        for player in room.players:
+            if player.session_id == session_id:
+                disconnected_player = player
+                break
+    
+    # 연결 제거 (세션 ID와 함께)
+    room_manager.remove_connection(room_id, websocket, session_id)
     
     # 연결 끊김 알림 (상대방에게)
     if disconnected_player and room:

@@ -13,6 +13,7 @@ class RoomManager:
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
         self.connections: Dict[str, Set[WebSocket]] = {}
+        self.websocket_sessions: Dict[WebSocket, str] = {}  # WebSocket -> session_id 매핑
         self.room_timers: Dict[str, asyncio.Task] = {}  # 방 정리 타이머
     
     def create_omok_room(self) -> tuple[str, str]:
@@ -22,6 +23,7 @@ class RoomManager:
             room_id=room_id,
             game_type=GameType.OMOK,
             status=GameStatus.WAITING,
+            players=[],
             game_state={
                 "board": [[0 for _ in range(15)] for _ in range(15)],
                 "current_player": 1
@@ -29,6 +31,21 @@ class RoomManager:
         )
         self.rooms[room_id] = room
         return room_id, f"/omok/{room_id}"
+
+    def create_janggi_room(self) -> tuple[str, str]:
+        """장기 방 생성"""
+        room_id = str(uuid.uuid4())[:8]
+        room = Room(
+            room_id=room_id,
+            game_type=GameType.JANGGI,
+            status=GameStatus.WAITING,
+            players=[],
+            game_state={
+                # 장기 게임 초기 상태 설정 (필요 시)
+            }
+        )
+        self.rooms[room_id] = room
+        return room_id, f"/janggi/{room_id}"
 
     def get_room(self, room_id: str) -> Optional[Room]:
         """방 조회"""
@@ -38,41 +55,51 @@ class RoomManager:
         """방 존재 여부 확인"""
         return room_id in self.rooms
 
-    def add_connection(self, room_id: str, websocket: WebSocket):
+    def add_connection(self, room_id: str, websocket: WebSocket, session_id: Optional[str] = None):
         """WebSocket 연결 추가"""
         if room_id not in self.connections:
             self.connections[room_id] = set()
         self.connections[room_id].add(websocket)
+        
+        # WebSocket과 세션 ID 매핑 저장
+        if session_id:
+            self.websocket_sessions[websocket] = session_id
 
     def remove_connection(self, room_id: str, websocket: WebSocket, session_id: Optional[str] = None):
         """WebSocket 연결 제거"""
         if room_id in self.connections:
             self.connections[room_id].discard(websocket)
+        
+        # WebSocket 세션 매핑에서 제거하고 세션 ID 확인
+        disconnected_session_id = session_id or self.websocket_sessions.get(websocket)
+        if websocket in self.websocket_sessions:
+            del self.websocket_sessions[websocket]
             
-            # 세션 ID가 있으면 플레이어 연결 상태 업데이트
-            if session_id:
-                self.update_player_connection_status(room_id, session_id, False)
+        # 세션 ID가 있으면 플레이어 연결 상태 업데이트
+        if disconnected_session_id:
+            self.update_player_connection_status(room_id, disconnected_session_id, False)
+        
+        room = self.rooms.get(room_id)
+        if not room:
+            return
             
-            room = self.rooms.get(room_id)
-            if not room:
-                return
+        # 방에 연결이 없을 때의 처리
+        if room_id in self.connections and not self.connections[room_id]:
+            # 게임이 진행 중이거나 대기 중인 경우 30분 대기 후 삭제
+            if room.status in [GameStatus.PLAYING, GameStatus.WAITING] and room.players:
+                # 기존 타이머가 있으면 취소
+                if room_id in self.room_timers:
+                    self.room_timers[room_id].cancel()
                 
-            # 방에 연결이 없을 때의 처리
-            if not self.connections[room_id]:
-                # 게임이 진행 중이거나 대기 중인 경우 30분 대기 후 삭제
-                if room.status in [GameStatus.PLAYING, GameStatus.WAITING] and room.players:
-                    # 기존 타이머가 있으면 취소
-                    if room_id in self.room_timers:
-                        self.room_timers[room_id].cancel()
-                    
-                    # 새 타이머 시작
-                    self.room_timers[room_id] = asyncio.create_task(
-                        self._cleanup_room_after_delay(room_id, 30)
-                    )
-                else:
-                    # 게임이 끝났거나 플레이어가 없으면 즉시 삭제
-                    if room_id in self.rooms:
-                        del self.rooms[room_id]
+                # 새 타이머 시작
+                self.room_timers[room_id] = asyncio.create_task(
+                    self._cleanup_room_after_delay(room_id, 30)
+                )
+            else:
+                # 게임이 끝났거나 플레이어가 없으면 즉시 삭제
+                if room_id in self.rooms:
+                    del self.rooms[room_id]
+                if room_id in self.connections:
                     del self.connections[room_id]
 
     def get_room_connections(self, room_id: str) -> Set[WebSocket]:
@@ -150,8 +177,8 @@ class RoomManager:
             self.room_timers[room_id].cancel()
             del self.room_timers[room_id]
         
-        # WebSocket 연결 추가
-        self.add_connection(room_id, websocket)
+        # WebSocket 연결 추가 (세션 ID와 함께)
+        self.add_connection(room_id, websocket, session_id)
         
         # 플레이어 연결 상태 업데이트
         self.update_player_connection_status(room_id, session_id, True)
@@ -223,6 +250,10 @@ class RoomManager:
             return []
         
         return [player for player in room.players if not player.is_connected]
+    
+    def get_session_id_by_websocket(self, websocket: WebSocket) -> Optional[str]:
+        """WebSocket으로 세션 ID 조회"""
+        return self.websocket_sessions.get(websocket)
 
     def cleanup_expired_rooms(self):
         """만료된 방들 정리 (수동 호출용)"""

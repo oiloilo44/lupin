@@ -85,6 +85,8 @@ class Room:
     chat_history: List[ChatMessage] = None  # 채팅 히스토리
     
     def __post_init__(self):
+        if self.players is None:
+            self.players = []
         if self.move_history is None:
             self.move_history = []
         if self.undo_requests is None:

@@ -48,14 +48,18 @@ class WebSocketHandler:
         if session_id:
             player = room_manager.add_player_to_room(room_id, nickname, session_id)
         else:
-            player = room.add_player(nickname)
+            # 세션이 없는 경우에도 session_id를 생성해서 플레이어 추가
+            from .session_manager import session_manager
+            temp_session_id = session_manager.generate_session_id()
+            player = room_manager.add_player_to_room(room_id, nickname, temp_session_id)
+            session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
         
         if player:
             # 플레이어 연결 상태 업데이트
             room_manager.update_player_connection_status(room_id, player.player_number, True)
             
-            # WebSocket 연결 추가
-            room_manager.add_connection(room_id, websocket)
+            # WebSocket 연결 추가 (세션 ID와 함께)
+            room_manager.add_connection(room_id, websocket, session_id)
             
             # 두 번째 플레이어 참여 시 색상 배정
             if len(room.players) == 2:
@@ -436,7 +440,8 @@ class WebSocketHandler:
             data={
                 "player": {
                     "nickname": player.nickname,
-                    "player_number": player.player_number
+                    "player_number": player.player_number,
+                    "color": player.color
                 },
                 "room": {
                     "game_type": room.game_type.value,
@@ -444,7 +449,8 @@ class WebSocketHandler:
                         {
                             "nickname": p.nickname, 
                             "player_number": p.player_number,
-                            "is_connected": p.is_connected
+                            "is_connected": p.is_connected,
+                            "color": p.color
                         }
                         for p in room.players
                     ],
@@ -454,7 +460,16 @@ class WebSocketHandler:
                     },
                     "status": room.status.value,
                     "game_ended": room.game_ended,
-                    "winner": room.winner
+                    "winner": room.winner,
+                    "games_played": room.games_played,
+                    "chat_history": [
+                        {
+                            "nickname": msg.nickname,
+                            "message": msg.message,
+                            "timestamp": msg.timestamp,
+                            "player_number": msg.player_number
+                        } for msg in room.chat_history
+                    ]
                 },
                 "move_history": [
                     {
