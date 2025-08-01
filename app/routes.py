@@ -148,7 +148,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
     except WebSocketDisconnect:
         await _handle_disconnect(room_id, websocket)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        # WebSocket 에러 발생 시 연결 정리
         await _handle_disconnect(room_id, websocket)
 
 
@@ -173,5 +173,4 @@ async def _handle_disconnect(room_id: str, websocket: WebSocket):
     
     # 연결 끊김 알림 (상대방에게)
     if disconnected_player and room:
-        from .websocket_handler import websocket_handler
         await websocket_handler._notify_player_disconnected(room_id, disconnected_player.nickname)

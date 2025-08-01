@@ -65,7 +65,7 @@ class GameChat {
     /**
      * 채팅 메시지 표시
      */
-    displayMessage(nickname, message, timestamp, playerNumber) {
+    displayMessage(nickname, message, timestamp, player_number) {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (!chatMessages) return;
         
@@ -84,7 +84,7 @@ class GameChat {
         
         messageDiv.innerHTML = `
             <div class="timestamp">${timestamp}</div>
-            <span class="nickname">${nickname}:</span>
+            <span class="nickname">${this.escapeHtml(nickname)}:</span>
             <div class="message">${this.escapeHtml(message)}</div>
         `;
         
@@ -162,28 +162,29 @@ class GameChat {
     }
 }
 
-// 전역 함수로도 제공 (기존 코드와의 호환성)
-let gameChat = null;
+// 전역 인스턴스
+window.gameChat = null;
 
+// 전역 함수들 (HTML에서 사용)
 function initGameChat(options = {}) {
-    gameChat = new GameChat(options);
-    return gameChat;
+    window.gameChat = new GameChat(options);
+    return window.gameChat;
 }
 
 function sendChatMessage() {
-    if (gameChat) {
-        gameChat.sendMessage();
+    if (window.gameChat) {
+        window.gameChat.sendMessage();
     }
 }
 
-function displayChatMessage(nickname, message, timestamp, playerNumber) {
-    if (gameChat) {
-        gameChat.displayMessage(nickname, message, timestamp, playerNumber);
+function displayChatMessage(nickname, message, timestamp, player_number) {
+    if (window.gameChat) {
+        window.gameChat.displayMessage(nickname, message, timestamp, player_number);
     }
 }
 
 function loadChatHistory(chatHistory) {
-    if (gameChat) {
-        gameChat.loadHistory(chatHistory);
+    if (window.gameChat) {
+        window.gameChat.loadHistory(chatHistory);
     }
 }

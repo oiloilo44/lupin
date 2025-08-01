@@ -38,20 +38,6 @@ class OmokGameState:
     board: List[List[int]]
     current_player: int
     
-    def to_client_format(self) -> Dict:
-        """클라이언트용 형식으로 변환"""
-        return {
-            "board": self.board,
-            "currentPlayer": self.current_player
-        }
-    
-    @classmethod
-    def from_client_format(cls, data: Dict) -> 'OmokGameState':
-        """클라이언트 형식에서 생성"""
-        return cls(
-            board=data["board"],
-            current_player=data["currentPlayer"]
-        )
 
 
 @dataclass
@@ -94,28 +80,6 @@ class Room:
         if self.chat_history is None:
             self.chat_history = []
     
-    def add_player(self, nickname: str) -> Optional[Player]:
-        """플레이어 추가"""
-        if len(self.players) >= 2:
-            return None
-        
-        player = Player(
-            nickname=nickname,
-            player_number=len(self.players) + 1
-        )
-        self.players.append(player)
-        
-        if len(self.players) == 2:
-            self.status = GameStatus.PLAYING
-            
-        return player
-    
-    def get_player_by_number(self, player_number: int) -> Optional[Player]:
-        """플레이어 번호로 플레이어 조회"""
-        for player in self.players:
-            if player.player_number == player_number:
-                return player
-        return None
     
     def is_full(self) -> bool:
         """방이 가득 찬지 확인"""

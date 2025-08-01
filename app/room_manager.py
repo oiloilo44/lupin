@@ -138,17 +138,6 @@ class RoomManager:
                 player.last_seen = datetime.now()
                 break
 
-    def update_player_connection_status_old(self, room_id: str, session_id: str, is_connected: bool):
-        """플레이어 연결 상태 업데이트 (기존 메서드)"""
-        room = self.rooms.get(room_id)
-        if not room:
-            return
-        
-        for player in room.players:
-            if player.session_id == session_id:
-                player.is_connected = is_connected
-                player.last_seen = datetime.now()
-                break
 
     async def _cleanup_room_after_delay(self, room_id: str, delay_minutes: int = 30):
         """지연 후 방 정리"""
@@ -234,8 +223,7 @@ class RoomManager:
         
         if len(room.players) == 2:
             room.status = GameStatus.PLAYING
-            # 두 번째 플레이어 참여 시 색상 배정
-            self.assign_colors(room)
+            # 두 번째 플레이어 참여 시 색상 배정은 게임 매니저에서 처리
             
         return player
 
@@ -282,23 +270,6 @@ class RoomManager:
                 self.room_timers[room_id].cancel()
                 del self.room_timers[room_id]
 
-    def assign_colors(self, room: Room):
-        """플레이어 색상 배정"""
-        if len(room.players) != 2:
-            return
-        
-        # 첫 게임이거나 마지막 승자가 없는 경우
-        if room.games_played == 0 or room.last_winner is None:
-            room.players[0].color = 1  # 흑돌
-            room.players[1].color = 2  # 백돌
-        else:
-            # 이전 게임 승자가 백돌로 시작
-            if room.last_winner == 1:
-                room.players[0].color = 2  # 백돌
-                room.players[1].color = 1  # 흑돌
-            else:
-                room.players[0].color = 1  # 흑돌
-                room.players[1].color = 2  # 백돌
 
     def reset_omok_game(self, room_id: str):
         """오목 게임 재시작"""
@@ -308,8 +279,7 @@ class RoomManager:
             room.winner = None
             room.games_played += 1
             
-            # 색상 재배정
-            self.assign_colors(room)
+            # 색상 재배정은 게임 매니저에서 처리
             
             room.game_state = {
                 "board": [[0 for _ in range(15)] for _ in range(15)],

@@ -1,16 +1,20 @@
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from fastapi import WebSocket
 from datetime import datetime
 
 from .models import MessageType, WebSocketMessage, GameMove, OmokGameState, ChatMessage
 from .room_manager import room_manager
 from .games.omok import OmokGame
+from .games.omok_manager import OmokManager
 from .session_manager import session_manager
 
 
 class WebSocketHandler:
     """WebSocket 메시지 처리"""
+    
+    def __init__(self):
+        self.omok_manager = OmokManager()
     
     async def handle_message(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
         """메시지 처리 메인 함수"""
@@ -22,8 +26,6 @@ class WebSocketHandler:
             await self._handle_reconnect(websocket, room_id, message)
         elif message_type == MessageType.MOVE:
             await self._handle_move(websocket, room_id, message)
-        elif message_type == MessageType.GAME_END:
-            await self._handle_game_end(websocket, room_id, message)
         elif message_type == MessageType.RESTART_REQUEST:
             await self._handle_restart_request(websocket, room_id, message)
         elif message_type == MessageType.RESTART_RESPONSE:
@@ -63,7 +65,7 @@ class WebSocketHandler:
             
             # 두 번째 플레이어 참여 시 색상 배정
             if len(room.players) == 2:
-                room_manager.assign_colors(room)
+                self.omok_manager.assign_colors(room)
             
             await self._broadcast_room_update(room_id, room)
     
@@ -101,66 +103,48 @@ class WebSocketHandler:
         await self._broadcast_room_update(room_id, room)
     
     async def _handle_move(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
-        """게임 이동 처리"""
+        """게임 이동 처리 - OmokManager를 통한 로직 처리"""
         room = room_manager.get_room(room_id)
         if not room:
             return
         
-        # 이동 기록 저장
-        if "last_move" in message:
-            move = GameMove(
-                x=message["last_move"]["x"],
-                y=message["last_move"]["y"],
-                player=room.game_state["current_player"]
-            )
-            
-            history_entry = OmokGame.create_move_history_entry(
-                move=move,
-                board_state=room.game_state["board"],
-                player=room.game_state["current_player"]
-            )
-            room.move_history.append(history_entry)
+        # 클라이언트에서 보낸 이동 정보 추출
+        move_data = message.get("move")
+        if not move_data or "x" not in move_data or "y" not in move_data:
+            await self._send_error(websocket, "잘못된 이동 정보입니다.")
+            return
         
-        # 게임 상태 업데이트
-        client_game_state = message["game_state"]
-        room.game_state = {
-            "board": client_game_state["board"],
-            "current_player": client_game_state["currentPlayer"]
-        }
+        x, y = move_data["x"], move_data["y"]
         
-        await self._broadcast_game_update(room_id, room.game_state, message.get("last_move"))
+        # 현재 플레이어 정보 확인
+        session_id = room_manager.get_session_id_by_websocket(websocket)
+        if not session_id:
+            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
+            return
+        
+        player = self.omok_manager.find_player_by_session(room, session_id)
+        if not player:
+            await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다.")
+            return
+        
+        # OmokManager를 통한 이동 처리
+        success, winning_line, error_msg = self.omok_manager.make_move(room, player, x, y)
+        
+        if not success:
+            await self._send_error(websocket, error_msg)
+            return
+        
+        # 게임 종료 확인
+        if winning_line:
+            # 게임 종료 브로드캐스트
+            await self._broadcast_game_end(room_id, room, {
+                "x": x, 
+                "y": y
+            }, winning_line)
+        else:
+            # 게임 상태 업데이트 브로드캐스트
+            await self._broadcast_game_update(room_id, room.game_state, {"x": x, "y": y})
     
-    async def _handle_game_end(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
-        """게임 종료 처리"""
-        room = room_manager.get_room(room_id)
-        if not room:
-            return
-        
-        room.game_ended = True
-        room.winner = message["winner"]
-        room.last_winner = message["winner"]  # 다음 게임 색상 배정을 위해 저장
-        
-        # 게임 상태 업데이트
-        client_game_state = message["game_state"]
-        room.game_state = {
-            "board": client_game_state["board"],
-            "current_player": client_game_state["currentPlayer"]
-        }
-        
-        response = WebSocketMessage(
-            type=MessageType.GAME_END,
-            data={
-                "winner": message["winner"],
-                "game_state": {
-                    "board": room.game_state["board"],
-                    "currentPlayer": room.game_state["current_player"]
-                },
-                "last_move": message.get("last_move"),
-                "winning_line": message.get("winning_line")
-            }
-        )
-        
-        await self._broadcast_to_room(room_id, response.to_json())
     
     async def _handle_restart_request(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
         """재시작 요청 처리"""
@@ -212,7 +196,7 @@ class WebSocketHandler:
                 data={
                     "game_state": {
                         "board": room.game_state["board"],
-                        "currentPlayer": room.game_state["current_player"]
+                        "current_player": room.game_state["current_player"]
                     },
                     "players": [
                         {"nickname": p.nickname, "player_number": p.player_number, "color": p.color}
@@ -302,7 +286,7 @@ class WebSocketHandler:
                     data={
                         "game_state": {
                             "board": room.game_state["board"],
-                            "currentPlayer": room.game_state["current_player"]
+                            "current_player": room.game_state["current_player"]
                         }
                     }
                 )
@@ -415,7 +399,7 @@ class WebSocketHandler:
             data={
                 "game_state": {
                     "board": game_state["board"],
-                    "currentPlayer": game_state["current_player"]
+                    "current_player": game_state["current_player"]
                 },
                 "last_move": last_move
             }
@@ -456,7 +440,7 @@ class WebSocketHandler:
                     ],
                     "game_state": {
                         "board": room.game_state["board"],
-                        "currentPlayer": room.game_state["current_player"]
+                        "current_player": room.game_state["current_player"]
                     },
                     "status": room.status.value,
                     "game_ended": room.game_ended,
@@ -503,6 +487,23 @@ class WebSocketHandler:
             type=MessageType.PLAYER_DISCONNECTED,
             data={"nickname": nickname}
         )
+        await self._broadcast_to_room(room_id, response.to_json())
+    
+    async def _broadcast_game_end(self, room_id: str, room, last_move: Dict[str, int], winning_line: List[dict]):
+        """게임 종료 브로드캐스트 - 서버에서 주도적으로 처리"""
+        response = WebSocketMessage(
+            type=MessageType.GAME_END,
+            data={
+                "winner": room.winner,
+                "game_state": {
+                    "board": room.game_state["board"],
+                    "current_player": room.game_state["current_player"]
+                },
+                "last_move": last_move,
+                "winning_line": winning_line
+            }
+        )
+        
         await self._broadcast_to_room(room_id, response.to_json())
     
     async def _broadcast_to_room(self, room_id: str, message: Dict):
