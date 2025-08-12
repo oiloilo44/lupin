@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Excel - Microsoft Excel{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/modals.css">
@@ -67,6 +68,9 @@
     
     <!-- 빠른 숨김 버튼 -->
     <button class="quick-hide" onclick="toggleWorkMode()" title="Ctrl+Tab">업무모드</button>
+    
+    <!-- 전역 토스트 컨테이너 -->
+    <div class="global-toast-container" id="globalToastContainer"></div>
     
     <script src="/static/js/base.js"></script>
     <script src="/static/js/modal.js"></script>

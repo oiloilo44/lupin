@@ -800,8 +800,8 @@ class OmokGameClient {
     
     // 토스트 알림 시스템 (전역 함수 사용)
     showToast(title, message, type = 'info', duration = 3000) {
-        if (typeof showToast === 'function') {
-            window.showToast(title, message, type, duration);
+        if (typeof showGlobalToast === 'function') {
+            showGlobalToast(title, message, type, duration);
         }
     }
     

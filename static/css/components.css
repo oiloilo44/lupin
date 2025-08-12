@@ -11,19 +11,21 @@
 .game-card {
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 20px;
     min-height: 120px;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     -webkit-tap-highlight-color: transparent;
 }
 
 .game-card:hover {
     background: #f9fafb;
-    border-color: #3b82f6;
-    transform: translateY(-2px);
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .game-card h3 {
@@ -44,13 +46,20 @@
 }
 
 .nickname-form input {
-    padding: 12px 16px;
-    min-height: 44px;
+    padding: 10px 12px;
+    min-height: 40px;
     border: 1px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 6px;
     margin: 0 8px;
-    font-size: 16px; /* 모바일에서 자동 줌 방지 */
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
     -webkit-appearance: none;
+}
+
+.nickname-form input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
 }
 
 /* 연결 상태 표시 */
@@ -94,21 +103,25 @@
 }
 
 .nickname-form button {
-    padding: 12px 20px;
-    min-height: 44px;
-    min-width: 88px;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    padding: 10px 16px !important;
+    min-height: 40px !important;
+    min-width: 80px !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    background: #3b82f6 !important;
+    color: white !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
     cursor: pointer;
-    font-size: 14px;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .nickname-form button:hover {
-    background: #2563eb;
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* 게임 상태 표시 */
@@ -138,18 +151,21 @@
 
 /* 게임 정보 패널 */
 .game-info-panel {
-    background: #f8f9fa;
+    background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: 6px;
+    padding: 12px;
     margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .game-info-panel h4 {
-    margin: 0 0 12px 0;
-    font-size: 14px;
+    margin: 0 0 8px 0;
+    font-size: 13px;
     font-weight: 600;
     color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 6px;
 }
 
 .player-item {
@@ -203,49 +219,37 @@
 }
 
 .game-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 8px;
+    flex-wrap: nowrap;
 }
 
 .stat-item {
+    flex: 1;
     text-align: center;
-    padding: 8px;
+    padding: 8px 4px;
     background: white;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
+    min-width: 0; /* flex 아이템 축소 허용 */
 }
 
 .stat-value {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: #1f2937;
+    line-height: 1.2;
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 10px;
     color: #6b7280;
     margin-top: 2px;
-}
-
-/* 게임 정보 패널 */
-.game-info-panel {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.game-info-panel h4 {
-    margin: 0 0 8px 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #f3f4f6;
-    padding-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* 채팅 패널 토글 기능 (PC에서도 적용) */
@@ -277,24 +281,6 @@
     display: none;
 }
 
-/* 게임 통계 개선 */
-.game-stats {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 8px;
-}
-
-.game-stats .stat-item {
-    flex: 1;
-    padding: 6px;
-    margin: 0;
-}
-
-.game-stats .stat-value {
-    font-size: 16px;
-    line-height: 1.2;
-}
 
 /* 플레이어 정보 */
 .player-item {
@@ -323,6 +309,10 @@
     font-size: 12px;
     font-weight: 500;
     color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
 }
 
 .player-stone {
@@ -413,5 +403,153 @@
 .game-buttons button#restartButton:hover:not(:disabled) {
     background: #2563eb;
     border-color: #2563eb;
+}
+
+/* 전역 버튼 스타일 - 오목 게임과 일관성 */
+button:not(.excel-toolbar button):not(.quick-hide) {
+    padding: 10px 16px;
+    min-height: 40px;
+    min-width: 80px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:not(.excel-toolbar button):not(.quick-hide):hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button:not(.excel-toolbar button):not(.quick-hide):active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+button:not(.excel-toolbar button):not(.quick-hide):disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 특수 버튼 스타일 */
+button.primary,
+button[onclick*="joinRoomAsHost"],
+button[onclick*="joinRoomByLink"] {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+button.primary:hover:not(:disabled),
+button[onclick*="joinRoomAsHost"]:hover:not(:disabled),
+button[onclick*="joinRoomByLink"]:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+/* 링크 복사 버튼 */
+button[onclick*="copyToClipboard"] {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+button[onclick*="copyToClipboard"]:hover:not(:disabled) {
+    background: #059669;
+    border-color: #059669;
+}
+
+/* 전역 입력 필드 스타일 */
+input[type="text"]:not(.opacity-slider),
+input[type="range"]:not(.opacity-slider),
+textarea {
+    padding: 10px 12px;
+    min-height: 40px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+}
+
+input[type="text"]:focus:not(.opacity-slider),
+textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
+}
+
+/* 메인 페이지 입력 필드 스타일 */
+.room-link-input,
+.room-url-input,
+.nickname-input {
+    width: 300px;
+    max-width: 80%;
+    margin: 10px;
+    text-align: center;
+}
+
+.room-url-input {
+    background: #f9fafb;
+    color: #374151;
+}
+
+/* 메인 페이지 버튼 클래스 */
+.back-button {
+    margin: 10px 5px !important;
+}
+
+.join-room-button,
+.join-game-button {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-color: #3b82f6 !important;
+    margin: 5px !important;
+}
+
+.join-room-button:hover:not(:disabled),
+.join-game-button:hover:not(:disabled) {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+}
+
+.copy-link-button {
+    background: #10b981 !important;
+    color: white !important;
+    border-color: #10b981 !important;
+    margin: 5px !important;
+}
+
+.copy-link-button:hover:not(:disabled) {
+    background: #059669 !important;
+    border-color: #059669 !important;
+}
+
+/* 위험한 액션 버튼 */
+button[onclick*="confirmLeaveRoom"],
+button[onclick*="leave"],
+button[onclick*="exit"] {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #ef4444 !important;
+}
+
+button[onclick*="confirmLeaveRoom"]:hover:not(:disabled),
+button[onclick*="leave"]:hover:not(:disabled),
+button[onclick*="exit"]:hover:not(:disabled) {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
 }
 
