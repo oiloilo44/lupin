@@ -61,17 +61,25 @@ class OmokGameClient {
     setupEventListeners() {
         // 캔버스 이벤트
         this.canvas.addEventListener('click', (e) => this.handleGameMove(e));
-        this.canvas.addEventListener('touchend', (e) => this.handleGameMove(e));
+        this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
         this.canvas.addEventListener('mousemove', (e) => this.handleHover(e));
-        this.canvas.addEventListener('touchmove', (e) => this.handleHover(e));
+        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
         this.canvas.addEventListener('mouseleave', () => this.clearHover());
         this.canvas.addEventListener('touchcancel', () => this.clearHover());
+        
+        // 우클릭 메뉴 방지 (모바일에서 롱터치 메뉴 방지)
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         
         // 윈도우 이벤트
         window.addEventListener('resize', () => this.adjustMobileLayout());
         window.addEventListener('orientationchange', () => {
             setTimeout(() => this.adjustMobileLayout(), 100);
         });
+        
+        // 터치 위치 추적용 변수
+        this.touchStartPos = null;
+        this.touchStartTime = null;
     }
     
     // HTML 이스케이프 함수 (XSS 방지)
@@ -340,6 +348,73 @@ class OmokGameClient {
     clearHover() {
         this.state.hoverPosition = null;
         this.drawBoard();
+    }
+    
+    // 터치 시작 처리
+    handleTouchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        this.touchStartPos = this.getEventPosition(touch);
+        this.touchStartTime = Date.now();
+    }
+    
+    // 터치 이동 처리
+    handleTouchMove(e) {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            this.handleHover(e.touches[0]);
+        }
+    }
+    
+    // 터치 종료 처리
+    handleTouchEnd(e) {
+        e.preventDefault();
+        
+        // 터치 시작 위치와 시간 확인 (실수 터치 방지)
+        if (!this.touchStartPos || !this.touchStartTime) return;
+        
+        const touchDuration = Date.now() - this.touchStartTime;
+        const endTouch = e.changedTouches[0];
+        const endPos = this.getEventPosition(endTouch);
+        
+        // 드래그가 아닌 탭인지 확인 (5픽셀 이내 이동, 500ms 이내)
+        const isDrag = Math.abs(endPos.x - this.touchStartPos.x) > 0 || 
+                       Math.abs(endPos.y - this.touchStartPos.y) > 0;
+        
+        if (!isDrag && touchDuration < 500) {
+            this.handleGameMove(endTouch);
+            // 터치 피드백 효과
+            this.showTouchFeedback(endPos.x, endPos.y);
+        }
+        
+        this.touchStartPos = null;
+        this.touchStartTime = null;
+        this.clearHover();
+    }
+    
+    // 터치 피드백 애니메이션
+    showTouchFeedback(x, y) {
+        if (x >= 0 && x < 15 && y >= 0 && y < 15) {
+            // Canvas에 임시 하이라이트 효과
+            const boardSize = Math.min(this.canvas.width, this.canvas.height);
+            const cellSize = (boardSize - 60) / 14;
+            const margin = (boardSize - cellSize * 14) / 2;
+            
+            const pixelX = margin + x * cellSize;
+            const pixelY = margin + y * cellSize;
+            
+            this.ctx.save();
+            this.ctx.strokeStyle = '#3b82f6';
+            this.ctx.lineWidth = 3;
+            this.ctx.globalAlpha = 0.5;
+            this.ctx.beginPath();
+            this.ctx.arc(pixelX, pixelY, cellSize / 3, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.restore();
+            
+            // 200ms 후 보드 다시 그리기
+            setTimeout(() => this.drawBoard(), 200);
+        }
     }
     
     // 게임 이동 처리
@@ -763,24 +838,32 @@ class OmokGameClient {
     // 모바일 레이아웃 조정
     adjustMobileLayout() {
         const gameLayout = document.getElementById('gameLayout');
+        const isMobile = window.innerWidth <= 768;
         
         if (!this.canvas) return;
         
-        if (window.innerWidth <= 768) {
+        // 모바일 감지 시 body에 클래스 추가
+        if (isMobile) {
+            document.body.classList.add('mobile-mode');
             gameLayout.style.flexDirection = 'column';
-            gameLayout.style.gap = '15px';
+            gameLayout.style.gap = '10px';
             
-            const size = Math.min(window.innerWidth - 60, 320);
-            this.canvas.style.width = size + 'px';
-            this.canvas.style.height = size + 'px';
-            this.canvas.width = size;
-            this.canvas.height = size;
+            // Canvas 크기 최적화
+            const maxSize = Math.min(window.innerWidth - 40, window.innerHeight * 0.4, 320);
+            this.canvas.style.width = maxSize + 'px';
+            this.canvas.style.height = maxSize + 'px';
+            this.canvas.width = maxSize;
+            this.canvas.height = maxSize;
             
             this.canvas.style.transform = '';
             this.canvas.style.transformOrigin = '';
             
+            // 게임 정보 패널 접기 기능 추가 (채팅 패널 포함)
+            this.setupCollapsiblePanels();
+            
             this.drawBoard();
         } else {
+            document.body.classList.remove('mobile-mode');
             gameLayout.style.flexDirection = 'row';
             gameLayout.style.gap = '20px';
             
@@ -791,9 +874,57 @@ class OmokGameClient {
             this.canvas.style.transform = '';
             this.canvas.style.transformOrigin = '';
             
+            // PC에서도 채팅 패널 접기 기능 적용
+            this.setupCollapsiblePanels();
+            
             this.drawBoard();
         }
     }
+    
+    // 게임 정보 패널 접기 기능 설정
+    setupCollapsiblePanels() {
+        const panels = document.querySelectorAll('.game-info-panel');
+        panels.forEach(panel => {
+            // 이미 이벤트가 등록되어 있는지 확인
+            if (!panel.dataset.collapsible) {
+                panel.dataset.collapsible = 'true';
+                
+                // 헤더만 클릭 가능하도록 설정 (채팅 패널 포함)
+                const header = panel.querySelector('h4');
+                if (header) {
+                    header.style.cursor = 'pointer';
+                    header.style.position = 'relative';
+                    panel.style.position = 'relative';
+                    
+                    header.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log(`패널 헤더 클릭됨: ${header.textContent}`); // 디버깅용
+                        panel.classList.toggle('collapsed');
+                    });
+                    
+                    // 채팅 패널인 경우 입력창과 버튼 클릭 시 이벤트 전파 방지
+                    if (panel.classList.contains('chat-panel')) {
+                        const chatInput = panel.querySelector('#chatInput');
+                        const chatButton = panel.querySelector('#chatSendButton');
+                        
+                        if (chatInput) {
+                            chatInput.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                            });
+                        }
+                        
+                        if (chatButton) {
+                            chatButton.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
     
     // 게임 참여
     joinGame() {

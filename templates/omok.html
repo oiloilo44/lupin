@@ -5,7 +5,7 @@
 <div id="nicknameForm" class="nickname-form">
     <h3>오목 게임 참여</h3>
     <p>닉네임을 입력하고 게임에 참여하세요</p>
-    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="10">
+    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="10" autocomplete="off">
     <button onclick="joinGame()">게임 참여</button>
 </div>
 
@@ -25,11 +25,11 @@
     </div>
     
     <div id="gameLayout" style="display: flex; gap: 20px;">
-        <div style="flex: 1;">
+        <div style="flex: 1;" class="board-container">
             <canvas id="omokBoard" width="450" height="450" style="border: 2px solid #333; background: #ffffff; cursor: pointer; touch-action: none;"></canvas>
         </div>
         
-        <div style="width: 180px;">
+        <div style="width: 180px;" class="info-panels-container">
             <div class="game-info-panel">
                 <h4>플레이어</h4>
                 <div id="playerList"></div>
@@ -56,14 +56,14 @@
         </div>
     </div>
     
-    <div style="margin-top: 20px; max-width: 600px;">
+    <div style="margin-top: 20px; max-width: 600px;" class="chat-container">
         {{ chat_panel(title="게임 채팅", height="120px") }}
     </div>
     
-    <div style="margin-top: 15px; text-align: center;">
-        <button onclick="requestUndo()" id="undoButton" style="padding: 8px 16px; margin: 5px;" disabled>무르기</button>
-        <button onclick="requestRestart()" id="restartButton" style="padding: 8px 16px; margin: 5px;">게임 재시작</button>
-        <button onclick="confirmLeaveRoom()" style="padding: 8px 16px; margin: 5px;">방 나가기</button>
+    <div style="margin-top: 15px; text-align: center;" class="game-buttons">
+        <button onclick="requestUndo()" id="undoButton" style="padding: 12px 20px; margin: 5px; min-height: 44px; min-width: 80px;" disabled>무르기</button>
+        <button onclick="requestRestart()" id="restartButton" style="padding: 12px 20px; margin: 5px; min-height: 44px; min-width: 100px;">게임 재시작</button>
+        <button onclick="confirmLeaveRoom()" style="padding: 12px 20px; margin: 5px; min-height: 44px; min-width: 80px;">방 나가기</button>
     </div>
 </div>
 

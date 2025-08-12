@@ -1,7 +1,7 @@
 <!-- 재사용 가능한 채팅 컴포넌트 -->
 {% macro chat_panel(title="채팅", height="200px") %}
 <div class="game-info-panel chat-panel">
-    <div class="chat-header">{{ title }}</div>
+    <h4 class="chat-header">{{ title }}</h4>
     <div id="chatMessages" class="chat-messages" style="height: {{ height }};">
         <div class="chat-empty">아직 채팅 메시지가 없습니다.</div>
     </div>

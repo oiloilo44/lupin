@@ -49,13 +49,13 @@ class GameChat {
         const chatInput = document.getElementById(this.chatInputId);
         const message = chatInput?.value.trim();
         
-        if (!message || !this.websocket || !this.myNickname) {
+        if (!message || !this.websocket) {
             return;
         }
         
+        // 서버에서 세션 기반으로 발신자를 인증하므로 nickname 전송 불필요
         this.websocket.send(JSON.stringify({
             type: 'chat_message',
-            nickname: this.myNickname,
             message: message
         }));
         

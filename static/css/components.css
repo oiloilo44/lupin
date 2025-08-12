@@ -13,9 +13,11 @@
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 20px;
+    min-height: 120px;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .game-card:hover {
@@ -42,11 +44,13 @@
 }
 
 .nickname-form input {
-    padding: 8px 12px;
+    padding: 12px 16px;
+    min-height: 44px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     margin: 0 8px;
-    font-size: 14px;
+    font-size: 16px; /* 모바일에서 자동 줌 방지 */
+    -webkit-appearance: none;
 }
 
 /* 연결 상태 표시 */
@@ -90,13 +94,17 @@
 }
 
 .nickname-form button {
-    padding: 8px 16px;
+    padding: 12px 20px;
+    min-height: 44px;
+    min-width: 88px;
     background: #3b82f6;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .nickname-form button:hover {
@@ -240,6 +248,35 @@
     padding-bottom: 6px;
 }
 
+/* 채팅 패널 토글 기능 (PC에서도 적용) */
+.chat-panel {
+    position: relative;
+}
+
+.chat-panel h4 {
+    cursor: pointer;
+    position: relative;
+}
+
+.chat-panel::after {
+    content: '▼';
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    font-size: 10px;
+    transition: transform 0.3s;
+    color: #6b7280;
+}
+
+.chat-panel.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+.chat-panel.collapsed .chat-messages,
+.chat-panel.collapsed .chat-input-container {
+    display: none;
+}
+
 /* 게임 통계 개선 */
 .game-stats {
     display: flex;
@@ -318,5 +355,63 @@
     font-weight: 500;
     color: #374151;
     padding: 4px 0;
+}
+
+/* 게임 버튼 스타일 (PC용) */
+.game-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.game-buttons button {
+    padding: 10px 16px;
+    min-height: 40px;
+    min-width: 80px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-buttons button:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-buttons button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.game-buttons button:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 재시작 버튼 강조 (PC용) */
+.game-buttons button#restartButton {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.game-buttons button#restartButton:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
 }
 

@@ -326,15 +326,17 @@ class WebSocketHandler:
         if not room:
             return
         
-        # 발신자 확인
-        sender_nickname = message.get("nickname", "")
-        sender = None
-        for player in room.players:
-            if player.nickname == sender_nickname:
-                sender = player
-                break
+        # WebSocket 연결의 세션 ID로 발신자 인증
+        session_id = room_manager.get_session_id_by_websocket(websocket)
+        if not session_id:
+            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
+            return
+        
+        # 세션 ID로 플레이어 찾기
+        sender = self.omok_manager.find_player_by_session(room, session_id)
         
         if not sender:
+            await self._send_error(websocket, "인증되지 않은 사용자입니다.")
             return
         
         # 채팅 메시지 생성
