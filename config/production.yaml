@@ -1,17 +1,17 @@
 # 프로덕션 환경 설정 (default.yaml을 상속)
 server:
   debug: false
-  
+
 logging:
   level: "WARNING"
-  
+
 # 프로덕션 최적화 설정
 websocket:
   max_connections: 5000     # 더 많은 연결 허용
-  
+
 room:
   max_rooms: 2000           # 더 많은 방 허용
-  
+
 security:
   rate_limit:
     requests_per_minute: 30 # 더 엄격한 제한

@@ -1,7 +1,7 @@
-from typing import Dict, List, Optional, Literal
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Optional
 
 
 class GameType(str, Enum):
@@ -37,7 +37,6 @@ class GameMove:
 class OmokGameState:
     board: List[List[int]]
     current_player: int
-    
 
 
 @dataclass
@@ -64,12 +63,12 @@ class Room:
     status: GameStatus
     game_ended: bool = False
     winner: Optional[int] = None
-    move_history: List[MoveHistoryEntry] = None
-    undo_requests: Dict = None
+    move_history: List[MoveHistoryEntry] = field(default_factory=list)
+    undo_requests: Dict = field(default_factory=dict)
     games_played: int = 0  # 게임 횟수
     last_winner: Optional[int] = None  # 마지막 게임 승자
-    chat_history: List[ChatMessage] = None  # 채팅 히스토리
-    
+    chat_history: List[ChatMessage] = field(default_factory=list)  # 채팅 히스토리
+
     def __post_init__(self):
         if self.players is None:
             self.players = []
@@ -79,8 +78,7 @@ class Room:
             self.undo_requests = {}
         if self.chat_history is None:
             self.chat_history = []
-    
-    
+
     def is_full(self) -> bool:
         """방이 가득 찬지 확인"""
         return len(self.players) >= 2
@@ -96,13 +94,13 @@ class MessageType(str, Enum):
     RESTART_RESPONSE = "restart_response"
     UNDO_REQUEST = "undo_request"
     UNDO_RESPONSE = "undo_response"
-    
+
     # 재접속 관련
     RECONNECT = "reconnect"
     RECONNECT_SUCCESS = "reconnect_success"
     PLAYER_RECONNECTED = "player_reconnected"
     PLAYER_DISCONNECTED = "player_disconnected"
-    
+
     # 상태 업데이트
     ROOM_UPDATE = "room_update"
     GAME_UPDATE = "game_update"
@@ -110,11 +108,11 @@ class MessageType(str, Enum):
     RESTART_REJECTED = "restart_rejected"
     UNDO_ACCEPTED = "undo_accepted"
     UNDO_REJECTED = "undo_rejected"
-    
+
     # 채팅
     CHAT_MESSAGE = "chat_message"
     CHAT_BROADCAST = "chat_broadcast"
-    
+
     # 에러
     ERROR = "error"
 
@@ -123,9 +121,6 @@ class MessageType(str, Enum):
 class WebSocketMessage:
     type: MessageType
     data: Dict
-    
+
     def to_json(self) -> Dict:
-        return {
-            "type": self.type.value,
-            **self.data
-        }
+        return {"type": self.type.value, **self.data}

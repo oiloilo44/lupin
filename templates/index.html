@@ -6,17 +6,17 @@
         <h3>🐍 지렁이 게임</h3>
         <p>멀티플레이어 실시간 지렁이 게임<br>여러 명이 함께 플레이</p>
     </div>
-    
+
     <div class="game-card" onclick="showOmokMenu()">
         <h3>⚫ 오목</h3>
         <p>1:1 대전 오목 게임<br>방을 만들거나 참여하세요</p>
     </div>
-    
+
     <div class="game-card" onclick="showJanggiComingSoon()">
         <h3>♞ 장기</h3>
         <p>전통 장기 게임<br>친구와 두뇌 대결</p>
     </div>
-    
+
     <div class="game-card" onclick="showSettings()">
         <h3>⚙️ 설정</h3>
         <p>배경 이미지 변경<br>게임 설정</p>
@@ -159,14 +159,14 @@ function showRoomCreated(url) {
 function joinRoomByLink() {
     const linkInput = document.getElementById('roomLinkInput');
     const link = linkInput.value.trim();
-    
+
     if (!link) {
         showModal('알림', '방 링크를 입력해주세요.', [
             { text: '확인', class: 'primary', onclick: hideModal }
         ]);
         return;
     }
-    
+
     // 링크에서 경로 추출
     try {
         const url = new URL(link);
@@ -193,7 +193,7 @@ function joinRoomAsHost() {
         ]);
         return;
     }
-    
+
     // 닉네임을 세션 스토리지에 저장하고 방으로 이동
     sessionStorage.setItem('hostNickname', nickname);
     window.location.href = currentRoomPath;

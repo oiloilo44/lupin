@@ -6,6 +6,6 @@ from .notification_handlers import NotificationEventHandler
 
 __all__ = [
     "GameEventHandler",
-    "LoggingEventHandler", 
+    "LoggingEventHandler",
     "NotificationEventHandler",
 ]

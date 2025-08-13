@@ -27,7 +27,6 @@ venv/
 .mypy_cache/
 .pytest_cache/
 .coverage
-.pre-commit-config.yaml
 
 # Project Specific
 *.log

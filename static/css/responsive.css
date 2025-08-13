@@ -5,7 +5,7 @@
     body.mobile-mode .excel-container {
         display: none;
     }
-    
+
     body.mobile-mode .game-overlay {
         position: fixed;
         top: 0;
@@ -21,41 +21,41 @@
         padding: 10px;
         overflow-y: auto;
     }
-    
+
     .excel-container {
         font-size: 10px;
     }
-    
+
     .excel-toolbar {
         padding: 4px 8px;
         overflow-x: auto;
         white-space: nowrap;
     }
-    
+
     .excel-toolbar button {
         font-size: 10px;
         padding: 2px 6px;
     }
-    
+
     .excel-headers {
         font-size: 9px;
         height: 16px;
     }
-    
+
     .excel-column-header,
     .excel-row-header {
         min-width: 60px;
         line-height: 16px;
         font-size: 9px;
     }
-    
+
     .excel-cell {
         min-width: 60px;
         height: 16px;
         font-size: 9px;
         line-height: 12px;
     }
-    
+
     .game-overlay {
         top: 10px;
         left: 10px;
@@ -69,23 +69,23 @@
         padding: 10px;
         box-sizing: border-box !important;
     }
-    
+
     .game-menu {
         grid-template-columns: 1fr;
         padding: 15px;
         gap: 15px;
     }
-    
+
     #gameArea {
         flex-direction: column;
         box-sizing: border-box !important;
     }
-    
+
     #gameArea > div {
         width: 100% !important;
         box-sizing: border-box !important;
     }
-    
+
     /* 게임 레이아웃 모바일 최적화 */
     #gameLayout {
         flex-direction: column !important;
@@ -93,14 +93,14 @@
         padding: 0 10px !important;
         box-sizing: border-box;
     }
-    
+
     /* 게임 영역 컬터너 최적화 */
     .board-container {
         width: 100% !important;
         display: flex;
         justify-content: center;
     }
-    
+
     .info-panels-container {
         width: 100% !important;
         display: flex;
@@ -110,7 +110,7 @@
         padding: 0;
         box-sizing: border-box;
     }
-    
+
     .info-panels-container .game-info-panel {
         flex: 1;
         min-width: calc(50% - 4px);
@@ -118,14 +118,14 @@
         max-width: calc(50% - 4px);
         margin: 0;
     }
-    
+
     .chat-container {
         width: 100% !important;
         max-width: 100% !important;
         margin: 10px 0 0 0 !important;
         box-sizing: border-box;
     }
-    
+
     .game-buttons {
         display: flex;
         flex-wrap: wrap;
@@ -136,7 +136,7 @@
         padding: 0;
         box-sizing: border-box;
     }
-    
+
     .game-buttons button {
         flex: 1;
         min-width: calc(33.333% - 4px);
@@ -156,19 +156,19 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    
+
     .game-buttons button:hover:not(:disabled) {
         background: #f9fafb !important;
         border-color: #9ca3af !important;
         transform: translateY(-1px) !important;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
-    
+
     .game-buttons button:active:not(:disabled) {
         transform: translateY(0) !important;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
     }
-    
+
     .game-buttons button:disabled {
         background: #f3f4f6 !important;
         color: #9ca3af !important;
@@ -177,19 +177,19 @@
         transform: none !important;
         box-shadow: none !important;
     }
-    
+
     /* 재시작 버튼 강조 */
     .game-buttons button#restartButton {
         background: #3b82f6 !important;
         color: white !important;
         border-color: #3b82f6 !important;
     }
-    
+
     .game-buttons button#restartButton:hover:not(:disabled) {
         background: #2563eb !important;
         border-color: #2563eb !important;
     }
-    
+
     /* 채팅창 모바일 최적화 */
     .chat-panel {
         width: 100%;
@@ -198,52 +198,52 @@
         margin: 5px 0;
         padding: 8px;
     }
-    
+
     .chat-messages {
         height: 80px !important;
         font-size: 11px;
     }
-    
+
     .chat-input-container {
         display: flex;
         gap: 5px;
         padding: 5px;
     }
-    
+
     .chat-input-container input {
         flex: 1;
         min-height: 36px;
         font-size: 14px;
         padding: 8px;
     }
-    
+
     .chat-input-container button {
         min-width: 60px;
         min-height: 36px;
         padding: 8px 12px;
         font-size: 12px;
     }
-    
+
     /* 채팅 토글 기능 */
     .chat-panel.collapsed {
         max-height: 40px;
         overflow: hidden;
     }
-    
+
     .chat-panel.collapsed .chat-messages,
     .chat-panel.collapsed .chat-input-container {
         display: none;
     }
-    
+
     /* 게임 정보 패널 아코디언 (채팅 패널 포함) */
     .game-info-panel {
         position: relative;
     }
-    
+
     .game-info-panel h4 {
         cursor: pointer;
     }
-    
+
     .game-info-panel::after {
         content: '▼';
         position: absolute;
@@ -252,15 +252,15 @@
         font-size: 10px;
         transition: transform 0.3s;
     }
-    
+
     .game-info-panel.collapsed::after {
         transform: rotate(-90deg);
     }
-    
+
     .game-info-panel.collapsed > *:not(h4) {
         display: none;
     }
-    
+
     #omokBoard {
         width: 100%;
         max-width: min(90vw, 320px);
@@ -270,32 +270,32 @@
         -webkit-touch-callout: none;
         -webkit-user-select: none;
     }
-    
+
     .game-info-panel {
         margin: 3px 0;
         padding: 8px;
     }
-    
+
     .game-stats {
         grid-template-columns: 1fr 1fr 1fr 1fr;
         gap: 8px;
     }
-    
+
     .player-item {
         padding: 6px 8px;
         font-size: 12px;
     }
-    
+
     /* 모바일에서 업무모드 버튼 숨기기 */
     .quick-hide {
         display: none !important;
     }
-    
+
     /* 모바일에서 투명도 조절바 숨기기 */
     .opacity-control {
         display: none !important;
     }
-    
+
     /* 토스트 메시지 모바일 최적화 */
     .toast-container {
         top: 10px;
@@ -303,7 +303,7 @@
         left: 5px;
         max-width: 100%;
     }
-    
+
     .toast {
         min-width: auto;
         max-width: calc(100vw - 20px);
@@ -311,25 +311,25 @@
         font-size: 12px;
         min-height: auto;
     }
-    
+
     .toast-title {
         font-size: 13px;
         margin-bottom: 2px;
     }
-    
+
     .toast-message {
         font-size: 11px;
     }
-    
+
     .modal {
         width: 95%;
         max-width: none;
     }
-    
+
     .modal-body {
         font-size: 14px;
     }
-    
+
     .modal-button {
         padding: 12px 20px;
         min-height: 44px;
@@ -342,7 +342,7 @@
     .info-panels-container .game-info-panel {
         min-width: 100%;
     }
-    
+
     /* 버튼들도 세로로 */
     .game-buttons {
         flex-direction: column;
@@ -350,7 +350,7 @@
         gap: 8px;
         padding: 0 15px;
     }
-    
+
     .game-buttons button {
         min-width: 100% !important;
         max-width: 100% !important;
@@ -359,39 +359,39 @@
         min-height: 44px !important;
         font-size: 14px !important;
     }
-    
+
     .game-overlay {
         padding: 8px;
     }
-    
+
     #omokBoard {
         max-width: 280px;
     }
-    
+
     .game-info-panel {
         padding: 8px;
     }
-    
+
     .player-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
     }
-    
+
     .game-stats {
         grid-template-columns: 1fr 1fr;
     }
-    
+
     .nickname-form {
         padding: 12px;
     }
-    
+
     .nickname-form input {
         width: 100%;
         margin: 8px 0;
         box-sizing: border-box;
     }
-    
+
     .nickname-form button {
         width: 100%;
         padding: 12px;
@@ -418,11 +418,11 @@
         min-height: 44px !important;
         font-size: 14px !important;
     }
-    
+
     .modal-footer {
         flex-direction: column;
     }
-    
+
     .modal-button {
         width: 100%;
         margin: 4px 0;

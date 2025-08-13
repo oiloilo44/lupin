@@ -4,7 +4,7 @@
 
 services:
   lupin:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: lupin-game

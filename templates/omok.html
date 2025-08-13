@@ -23,23 +23,23 @@
         <span id="connectionIcon">🔴</span>
         <span id="connectionText">연결 끊김</span>
     </div>
-    
+
     <div id="gameLayout" style="display: flex; gap: 20px;">
         <div style="flex: 1;" class="board-container">
             <canvas id="omokBoard" width="450" height="450" style="border: 2px solid #333; background: #ffffff; cursor: pointer; touch-action: none;"></canvas>
         </div>
-        
+
         <div style="width: 220px;" class="info-panels-container">
             <div class="game-info-panel">
                 <h4>플레이어</h4>
                 <div id="playerList"></div>
             </div>
-            
+
             <div class="game-info-panel">
                 <h4>현재 턴</h4>
                 <div id="currentTurn">-</div>
             </div>
-            
+
             <div class="game-info-panel">
                 <h4>게임 정보</h4>
                 <div class="game-stats">
@@ -55,11 +55,11 @@
             </div>
         </div>
     </div>
-    
+
     <div style="margin-top: 20px;" class="chat-container">
         {{ chat_panel(title="게임 채팅", height="120px") }}
     </div>
-    
+
     <div class="game-buttons">
         <button onclick="requestUndo()" id="undoButton" disabled>무르기</button>
         <button onclick="requestRestart()" id="restartButton">게임 재시작</button>
