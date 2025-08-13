@@ -9,7 +9,7 @@ from .models import Player
 
 
 class SessionManager:
-    """세션 관리 시스템"""
+    """세션 관리 시스템."""
 
     def __init__(self):
         """Initialize the session manager."""

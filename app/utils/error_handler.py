@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class ErrorHandler:
-    """전역 에러 처리 및 로깅 클래스"""
+    """전역 에러 처리 및 로깅 클래스."""
 
     @staticmethod
     def setup_logging() -> None:
-        """로깅 시스템 설정"""
+        """로깅 시스템 설정."""
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -31,9 +31,7 @@ class ErrorHandler:
 
     @staticmethod
     async def handle_websocket_error(
-        websocket: WebSocket,
-        error: Exception,
-        context: Optional[Dict[str, Any]] = None
+        websocket: WebSocket, error: Exception, context: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         WebSocket 에러 처리
@@ -102,10 +100,8 @@ class ErrorHandler:
             }
 
     @staticmethod
-    def _log_error(
-        error: Exception, error_type: str, context: Dict[str, Any]
-    ) -> None:
-        """에러 로깅"""
+    def _log_error(error: Exception, error_type: str, context: Dict[str, Any]) -> None:
+        """에러 로깅."""
         error_info = {
             "error_type": error_type,
             "exception_class": error.__class__.__name__,
@@ -118,14 +114,10 @@ class ErrorHandler:
             error_info.update(
                 {"error_code": error.error_code, "details": error.details}
             )
-            logger.warning(
-                f"Game Error: {json.dumps(error_info, ensure_ascii=False)}"
-            )
+            logger.warning(f"Game Error: {json.dumps(error_info, ensure_ascii=False)}")
         else:
             logger.error(
-                f"Unexpected Error: {json.dumps(
-                    error_info, ensure_ascii=False
-                )}",
+                f"Unexpected Error: {json.dumps(error_info, ensure_ascii=False)}",
                 exc_info=True,
             )
 
@@ -133,11 +125,9 @@ class ErrorHandler:
     async def _send_websocket_error(
         websocket: WebSocket, error_data: Dict[str, Any]
     ) -> bool:
-        """WebSocket 에러 메시지 전송"""
+        """WebSocket 에러 메시지 전송."""
         try:
-            response = WebSocketMessage(
-                type=MessageType.ERROR, data=error_data
-            )
+            response = WebSocketMessage(type=MessageType.ERROR, data=error_data)
             await websocket.send_text(json.dumps(response.to_json()))
             return True
         except Exception as e:
@@ -146,7 +136,7 @@ class ErrorHandler:
 
     @staticmethod
     def create_user_friendly_message(error: Exception) -> str:
-        """사용자 친화적 에러 메시지 생성"""
+        """사용자 친화적 에러 메시지 생성."""
         if isinstance(error, GameError):
             return error.message
 
@@ -164,7 +154,7 @@ class ErrorHandler:
 
 
 class GameErrorContext:
-    """게임 에러 컨텍스트 헬퍼 클래스"""
+    """게임 에러 컨텍스트 헬퍼 클래스."""
 
     @staticmethod
     def websocket_context(
@@ -172,7 +162,7 @@ class GameErrorContext:
         session_id: Optional[str] = None,
         message_type: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """WebSocket 컨텍스트 생성"""
+        """WebSocket 컨텍스트 생성."""
         context = {"room_id": room_id}
         if session_id:
             context["session_id"] = session_id
@@ -184,7 +174,7 @@ class GameErrorContext:
     def game_move_context(
         room_id: str, x: int, y: int, player_number: Optional[int] = None
     ) -> Dict[str, Any]:
-        """게임 이동 컨텍스트 생성"""
+        """게임 이동 컨텍스트 생성."""
         context = {"room_id": room_id, "move": {"x": x, "y": y}}
         if player_number is not None:
             context["player_number"] = str(player_number)
@@ -196,7 +186,7 @@ class GameErrorContext:
         player_number: Optional[int] = None,
         session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """플레이어 컨텍스트 생성"""
+        """플레이어 컨텍스트 생성."""
         context = {"room_id": room_id}
         if player_number is not None:
             context["player_number"] = str(player_number)
