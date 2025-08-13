@@ -1,0 +1,38 @@
+# 오목 게임 설정
+omok:
+  # 보드 설정
+  board_size: 15
+  win_condition: 5  # 승리를 위한 연속 돌 개수
+  
+  # 플레이어 설정
+  max_players: 2
+  colors:
+    black: 1
+    white: 2
+  
+  # 시간 제한 설정 (초 단위)
+  timeouts:
+    move_timeout: 30         # 한 수당 제한 시간
+    reconnect_timeout: 1800  # 재접속 허용 시간 (30분)
+    cleanup_delay: 1800      # 빈 방 정리 지연 시간 (30분)
+  
+  # 채팅 설정
+  chat:
+    max_history: 50         # 채팅 히스토리 최대 개수
+    max_message_length: 200 # 메시지 최대 길이
+  
+  # 게임 메타데이터
+  metadata:
+    display_name: "오목"
+    description: "15x15 보드에서 5개의 돌을 연속으로 놓아 승리하는 게임"
+    category: "보드게임"
+    difficulty: "쉬움"
+    estimated_duration: "10-30분"
+    min_age: 6
+    
+  # 게임 기능 설정
+  features:
+    undo_enabled: true      # 무르기 기능
+    restart_enabled: true   # 재시작 기능
+    spectator_enabled: true # 관전 기능
+    chat_enabled: true      # 채팅 기능
