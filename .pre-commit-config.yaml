@@ -14,17 +14,20 @@ repos:
     hooks:
       - id: black
         language_version: python3
+        args: [--line-length=88]
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
       - id: isort
+        args: [--profile=black, --line-length=88]
 
   - repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
       - id: flake8
         additional_dependencies: [flake8-docstrings]
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.5.1
