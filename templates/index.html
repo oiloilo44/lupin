@@ -53,15 +53,17 @@
 <div id="roomCreated" style="display: none; text-align: center; padding: 20px;">
     <h3>방이 생성되었습니다!</h3>
     <p>아래 링크를 친구에게 공유하고 닉네임을 입력하여 게임에 입장하세요:</p>
-    <input type="text" id="roomUrl" readonly class="room-url-input">
+    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin: 10px 0;">
+        <input type="text" id="roomUrl" readonly class="room-url-input" style="flex: 1; margin: 0;">
+        <button onclick="copyToClipboard()" class="copy-link-button" style="margin: 0;">링크 복사</button>
+    </div>
     <br>
-    <button onclick="copyToClipboard()" class="copy-link-button">링크 복사</button>
-    <br><br>
     <div style="margin: 20px 0;">
         <p><strong>닉네임을 입력하고 게임에 입장하세요:</strong></p>
-        <input type="text" id="hostNickname" placeholder="닉네임을 입력하세요..." maxlength="10" class="nickname-input">
-        <br>
-        <button onclick="joinRoomAsHost()" class="join-game-button">게임 입장</button>
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin: 10px 0;">
+            <input type="text" id="hostNickname" placeholder="닉네임을 입력하세요..." maxlength="10" class="nickname-input" style="flex: 1; margin: 0;">
+            <button onclick="joinRoomAsHost()" class="join-game-button" style="margin: 0;">게임 입장</button>
+        </div>
     </div>
     <button onclick="backToOmokMenu()" class="back-button">뒤로 가기</button>
 </div>
