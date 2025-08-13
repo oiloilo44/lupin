@@ -1,0 +1,25 @@
+# 개발 환경 오버라이드 설정
+# 사용법: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  lupin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # 개발 스테이지 사용
+    ports:
+      - "8000:8000"  # 직접 포트 노출 (Traefik 없이)
+      - "8003:8003"  # 모니터링 API 포트
+    volumes:
+      - ./app:/app/app  # 코드 핫 리로드
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./config:/app/config
+    environment:
+      - LUPIN_ENV=development
+      - DEBUG=true
+      - RELOAD=true  # uvicorn 핫 리로드
+      - LOG_LEVEL=DEBUG
+    command: ["python", "main.py", "--reload"]  # 개발 모드 실행
+    networks:
+      - default  # 기본 네트워크 사용 (proxy_network 불필요)

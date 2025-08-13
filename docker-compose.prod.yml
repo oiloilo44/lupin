@@ -1,0 +1,43 @@
+# 운영 환경 오버라이드 설정
+# 사용법: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  lupin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production  # 프로덕션 스테이지 사용
+    environment:
+      - LUPIN_ENV=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    labels:
+      # Traefik 리버스 프록시 설정 (기존 설정 유지)
+      - traefik.enable=true
+      - traefik.http.routers.lupin.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.lupin.tls=true
+      - traefik.http.routers.lupin.entrypoints=web,websecure
+      - traefik.http.routers.lupin.tls.certresolver=mytlschallenge
+      - traefik.http.services.lupin.loadbalancer.server.port=8000
+      # 보안 헤더 설정
+      - traefik.http.middlewares.lupin-headers.headers.SSLRedirect=true
+      - traefik.http.middlewares.lupin-headers.headers.STSSeconds=315360000
+      - traefik.http.middlewares.lupin-headers.headers.browserXSSFilter=true
+      - traefik.http.middlewares.lupin-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.lupin-headers.headers.forceSTSHeader=true
+      - traefik.http.middlewares.lupin-headers.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.lupin-headers.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.lupin-headers.headers.STSPreload=true
+      - traefik.http.routers.lupin.middlewares=lupin-headers@docker
+    networks:
+      - proxy_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  proxy_network:
+    external: true
