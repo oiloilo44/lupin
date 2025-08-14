@@ -1,0 +1,292 @@
+{
+  "components": {
+    "toast_system": {
+      "name": "전역 토스트 알림 시스템",
+      "description": "게임 정보를 가리지 않는 전역 토스트 메시지 시스템. 게임 오버레이 투명도와 연동됨",
+      "files": [
+        "templates/base.html",
+        "static/js/base.js",
+        "static/css/notifications.css"
+      ],
+      "html_structure": {
+        "container": "<div class=\"global-toast-container\" id=\"globalToastContainer\"></div>",
+        "location": "base.html body 최하단"
+      },
+      "javascript_api": {
+        "function": "showGlobalToast(title, message, type, duration)",
+        "parameters": {
+          "title": "string - 토스트 제목",
+          "message": "string - 토스트 메시지",
+          "type": "string - 'success', 'info', 'warning', 'error'",
+          "duration": "number - 표시 시간(ms), 기본값 3000"
+        },
+        "example": "showGlobalToast('게임 시작', '모든 플레이어가 참여했습니다', 'success', 3000)"
+      },
+      "css_classes": {
+        "container": ".global-toast-container",
+        "toast": ".toast",
+        "types": [".toast.success", ".toast.info", ".toast.warning", ".toast.error"],
+        "structure": [".toast-title", ".toast-message"]
+      },
+      "features": [
+        "XSS 방지를 위한 HTML 이스케이프",
+        "게임 오버레이 투명도와 실시간 연동",
+        "애니메이션 효과 (slide-in/out)",
+        "자동 제거 타이머",
+        "타입별 색상 구분"
+      ]
+    },
+    "modal_system": {
+      "name": "모달 다이얼로그 시스템",
+      "description": "확인/취소, 에러, 승리 등 다양한 상황에서 사용하는 모달 시스템",
+      "files": [
+        "templates/omok.html",
+        "static/css/modals.css"
+      ],
+      "html_structure": {
+        "container": "<div class=\"modal-overlay\" id=\"modalOverlay\">",
+        "modal": "<div class=\"modal\" id=\"modal\">",
+        "sections": ["modal-header", "modal-body", "modal-footer"]
+      },
+      "javascript_api": {
+        "show_function": "showModal(title, body, buttons)",
+        "hide_function": "hideModal()",
+        "parameters": {
+          "title": "string - 모달 제목",
+          "body": "string - HTML 내용",
+          "buttons": "array - 버튼 객체 배열"
+        },
+        "button_object": {
+          "text": "string - 버튼 텍스트",
+          "class": "string - 'primary', 'secondary', 'success'",
+          "onclick": "function - 클릭 이벤트 핸들러"
+        },
+        "example": "showModal('확인', '정말 나가시겠습니까?', [{text: '확인', class: 'primary', onclick: () => leave()}])"
+      },
+      "features": [
+        "다양한 버튼 스타일 지원",
+        "HTML 내용 지원",
+        "오버레이 클릭으로 닫기",
+        "키보드 이스케이프 지원",
+        "승리/패배 특수 모달 스타일"
+      ]
+    },
+    "game_layout": {
+      "name": "게임 레이아웃 시스템",
+      "description": "Excel 스타일 위장과 게임 오버레이를 제공하는 기본 레이아웃",
+      "files": [
+        "templates/base.html",
+        "static/css/base.css",
+        "static/css/components.css",
+        "static/css/responsive.css"
+      ],
+      "structure": {
+        "excel_container": ".excel-container - Excel 위장 UI",
+        "game_overlay": ".game-overlay - 게임 영역 오버레이",
+        "opacity_control": ".opacity-control - 투명도 조절 컨트롤",
+        "quick_hide": ".quick-hide - 빠른 숨김 버튼"
+      },
+      "javascript_api": {
+        "toggle_work_mode": "toggleWorkMode() - 업무모드/게임모드 전환",
+        "opacity_functions": [
+          "setOverlayOpacity(opacity) - 오버레이 투명도 설정",
+          "initOpacityControl() - 투명도 컨트롤 초기화"
+        ]
+      },
+      "features": [
+        "Excel 스타일 위장 UI",
+        "투명도 조절 가능한 게임 오버레이",
+        "반응형 디자인 (모바일 대응)",
+        "키보드 단축키 (Escape)",
+        "로컬 스토리지 투명도 저장"
+      ]
+    },
+    "websocket_client": {
+      "name": "WebSocket 클라이언트 시스템",
+      "description": "게임 서버와의 실시간 통신을 위한 WebSocket 클라이언트 기본 구조",
+      "files": [
+        "static/js/omok.js"
+      ],
+      "class_structure": {
+        "base_class": "GameClient (추상 클래스 개념)",
+        "methods": [
+          "connectWebSocket(isReconnect)",
+          "handleWebSocketMessage(event)",
+          "handleWebSocketClose(event)",
+          "attemptReconnect()",
+          "updateConnectionStatus(status, text)"
+        ]
+      },
+      "connection_features": [
+        "자동 재연결 로직",
+        "연결 상태 표시",
+        "지수 백오프 재연결",
+        "세션 복원 기능",
+        "에러 처리 및 복구"
+      ],
+      "message_patterns": {
+        "join": "{ type: 'join', nickname: string, session_id: string }",
+        "reconnect": "{ type: 'reconnect', session_id: string }",
+        "move": "{ type: 'move', move: object, session_id: string }",
+        "room_update": "서버 → 클라이언트 방 상태 업데이트",
+        "game_update": "서버 → 클라이언트 게임 상태 업데이트"
+      }
+    },
+    "session_management": {
+      "name": "세션 관리 시스템",
+      "description": "게임 세션 저장, 복원, 재접속을 위한 로컬 스토리지 기반 세션 관리",
+      "files": [
+        "static/js/omok.js"
+      ],
+      "methods": {
+        "save": "saveGameSession(sessionData) - 세션 저장",
+        "load": "loadGameSession() - 세션 로드",
+        "clear": "clearGameSession() - 세션 정리",
+        "check": "checkExistingSession() - 기존 세션 확인"
+      },
+      "session_data_structure": {
+        "nickname": "string - 플레이어 닉네임",
+        "sessionId": "string - 서버 세션 ID",
+        "playerNumber": "number - 플레이어 번호",
+        "color": "number - 플레이어 색상",
+        "joinedAt": "number - 입장 시간",
+        "timestamp": "number - 세션 저장 시간",
+        "roomId": "string - 방 ID"
+      },
+      "features": [
+        "24시간 세션 유효기간",
+        "방별 세션 관리",
+        "재접속 시 자동 복원",
+        "에러 처리 및 정리"
+      ]
+    },
+    "chat_system": {
+      "name": "채팅 시스템",
+      "description": "게임 내 실시간 채팅 기능",
+      "files": [
+        "templates/components/chat.html",
+        "static/js/chat.js"
+      ],
+      "html_structure": {
+        "panel": "chat_panel(title, height) - Jinja2 매크로",
+        "container": ".chat-panel",
+        "sections": [".chat-messages", ".chat-input-section"]
+      },
+      "javascript_api": {
+        "setup": "setupChatConnection(ws, nickname)",
+        "send": "sendChatMessage()",
+        "display": "displayChatMessage(nickname, message, timestamp, playerNumber)",
+        "handle": "handleChatWebSocketMessage(data)"
+      },
+      "features": [
+        "실시간 메시지 전송",
+        "플레이어별 색상 구분",
+        "타임스탬프 표시",
+        "자동 스크롤",
+        "Enter 키 전송"
+      ]
+    },
+    "responsive_design": {
+      "name": "반응형 디자인 시스템",
+      "description": "모바일과 데스크톱 환경에 모두 대응하는 반응형 레이아웃",
+      "files": [
+        "static/css/responsive.css"
+      ],
+      "breakpoints": {
+        "mobile": "768px 이하",
+        "tablet": "769px ~ 1024px",
+        "desktop": "1025px 이상"
+      },
+      "mobile_features": [
+        "터치 이벤트 처리",
+        "가상 키보드 대응",
+        "세로/가로 모드 지원",
+        "패널 접기/펼치기 기능",
+        "적응형 캔버스 크기"
+      ],
+      "javascript_support": {
+        "detect": "window.innerWidth <= 768",
+        "adjust": "adjustMobileLayout()",
+        "panels": "setupCollapsiblePanels()",
+        "events": ["resize", "orientationchange"]
+      }
+    },
+    "game_info_panels": {
+      "name": "게임 정보 패널 시스템",
+      "description": "플레이어 정보, 게임 상태, 통계를 표시하는 정보 패널",
+      "files": [
+        "static/css/components.css"
+      ],
+      "panel_types": {
+        "player_list": "플레이어 목록 및 턴 표시",
+        "current_turn": "현재 턴 플레이어",
+        "game_stats": "게임 통계 (수, 시간 등)",
+        "chat_panel": "채팅 패널"
+      },
+      "css_structure": {
+        "container": ".game-info-panel",
+        "collapsible": ".game-info-panel.collapsed",
+        "header": "h4 (클릭 가능)",
+        "content": "패널별 고유 구조"
+      },
+      "features": [
+        "접기/펼치기 기능",
+        "모바일 최적화",
+        "실시간 데이터 업데이트",
+        "시각적 상태 표시"
+      ]
+    }
+  },
+  "integration_guidelines": {
+    "new_game_checklist": [
+      "base.html 상속 및 content 블록 구현",
+      "게임별 WebSocket 클라이언트 클래스 작성",
+      "세션 관리 로직 통합",
+      "토스트 시스템 활용",
+      "모달 시스템 통합",
+      "반응형 디자인 적용",
+      "채팅 시스템 통합 (선택사항)"
+    ],
+    "naming_conventions": {
+      "css_classes": "kebab-case (.game-info-panel)",
+      "javascript_functions": "camelCase (showGlobalToast)",
+      "html_ids": "camelCase (globalToastContainer)",
+      "websocket_messages": "snake_case (session_id, game_state)"
+    },
+    "file_organization": {
+      "templates": "templates/[game_name].html",
+      "static_js": "static/js/[game_name].js",
+      "static_css": "게임별 CSS는 템플릿 내 <style> 블록 사용",
+      "components": "templates/components/ 폴더에 재사용 컴포넌트"
+    }
+  },
+  "security_requirements": {
+    "xss_prevention": [
+      "모든 사용자 입력에 escapeHtml() 함수 사용",
+      "innerHTML 대신 textContent 우선 사용",
+      "서버 검증과 클라이언트 검증 이중화"
+    ],
+    "websocket_security": [
+      "세션 ID 기반 인증",
+      "서버 사이드 게임 로직 검증",
+      "클라이언트는 UI 업데이트만 담당"
+    ]
+  },
+  "performance_optimization": {
+    "canvas_rendering": [
+      "requestAnimationFrame 사용",
+      "필요시에만 다시 그리기",
+      "터치 이벤트 최적화"
+    ],
+    "websocket_optimization": [
+      "필요한 데이터만 전송",
+      "재연결 시 지수 백오프",
+      "메시지 큐잉 방지"
+    ],
+    "mobile_optimization": [
+      "터치 지연 최소화",
+      "가상 키보드 대응",
+      "메모리 사용량 최적화"
+    ]
+  }
+}

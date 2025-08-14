@@ -2,8 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Excel - Microsoft Excel{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/modals.css">
@@ -23,7 +24,7 @@
             <button>검토</button>
             <button>보기</button>
         </div>
-        
+
         <div class="excel-headers">
             <div class="excel-row-header"></div>
             <div class="excel-column-header">A</div>
@@ -37,7 +38,7 @@
             <div class="excel-column-header">I</div>
             <div class="excel-column-header">J</div>
         </div>
-        
+
         <div class="excel-grid">
             {% for i in range(1, 31) %}
             <div class="excel-row">
@@ -49,29 +50,31 @@
             {% endfor %}
         </div>
     </div>
-    
+
     <!-- 게임 오버레이 -->
     <div class="game-overlay" id="gameOverlay">
         <!-- 투명도 조절 컨트롤 -->
         <div class="opacity-control">
             <span class="opacity-label">투명도</span>
             <div class="opacity-slider-container">
-                <input type="range" class="opacity-slider" id="opacitySlider" 
+                <input type="range" class="opacity-slider" id="opacitySlider"
                        min="10" max="100" value="70" step="5">
                 <span class="opacity-value" id="opacityValue">70%</span>
             </div>
         </div>
-        
         {% block content %}{% endblock %}
     </div>
-    
+
     <!-- 빠른 숨김 버튼 -->
     <button class="quick-hide" onclick="toggleWorkMode()" title="Ctrl+Tab">업무모드</button>
-    
+
+    <!-- 전역 토스트 컨테이너 -->
+    <div class="global-toast-container" id="globalToastContainer"></div>
+
     <script src="/static/js/base.js"></script>
     <script src="/static/js/modal.js"></script>
     <script src="/static/js/notifications.js"></script>
-    
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -5,11 +5,10 @@
 <div id="nicknameForm" class="nickname-form">
     <h3>오목 게임 참여</h3>
     <p>닉네임을 입력하고 게임에 참여하세요</p>
-    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="10">
+    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="10" autocomplete="off">
     <button onclick="joinGame()">게임 참여</button>
 </div>
 
-<!-- 기존 게임 이어하기 UI -->
 <div id="existingGameForm" class="nickname-form" style="display: none;">
     <h3>기존 게임 발견</h3>
     <p>진행 중인 게임이 있습니다. 어떻게 하시겠습니까?</p>
@@ -24,24 +23,22 @@
         <span id="connectionIcon">🔴</span>
         <span id="connectionText">연결 끊김</span>
     </div>
-    <div class="game-status" id="gameStatus">플레이어를 기다리는 중...</div>
-    
     <div id="gameLayout" style="display: flex; gap: 20px;">
-        <div style="flex: 1;">
+        <div style="flex: 1;" class="board-container">
             <canvas id="omokBoard" width="450" height="450" style="border: 2px solid #333; background: #ffffff; cursor: pointer; touch-action: none;"></canvas>
         </div>
-        
-        <div style="width: 180px;">
+
+        <div style="width: 220px;" class="info-panels-container">
             <div class="game-info-panel">
                 <h4>플레이어</h4>
                 <div id="playerList"></div>
             </div>
-            
+
             <div class="game-info-panel">
                 <h4>현재 턴</h4>
                 <div id="currentTurn">-</div>
             </div>
-            
+
             <div class="game-info-panel">
                 <h4>게임 정보</h4>
                 <div class="game-stats">
@@ -57,20 +54,18 @@
             </div>
         </div>
     </div>
-    
-    <!-- 하단 채팅 영역 -->
-    <div style="margin-top: 20px; max-width: 600px;">
+
+    <div style="margin-top: 20px;" class="chat-container">
         {{ chat_panel(title="게임 채팅", height="120px") }}
     </div>
-    
-    <div style="margin-top: 15px; text-align: center;">
-        <button onclick="requestUndo()" id="undoButton" style="padding: 8px 16px; margin: 5px;" disabled>무르기</button>
-        <button onclick="requestRestart()" style="padding: 8px 16px; margin: 5px;">게임 재시작</button>
-        <button onclick="confirmLeaveRoom()" style="padding: 8px 16px; margin: 5px;">방 나가기</button>
+
+    <div class="game-buttons">
+        <button onclick="requestUndo()" id="undoButton" disabled>무르기</button>
+        <button onclick="requestRestart()" id="restartButton">게임 재시작</button>
+        <button onclick="confirmLeaveRoom()">방 나가기</button>
     </div>
 </div>
 
-<!-- 모달 오버레이 -->
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="modal">
         <div class="modal-header">
@@ -80,25 +75,52 @@
             내용
         </div>
         <div class="modal-footer" id="modalFooter">
-            <!-- 버튼들이 동적으로 추가됩니다 -->
         </div>
     </div>
 </div>
 
-<!-- 토스트 컨테이너 -->
 <div class="toast-container" id="toastContainer"></div>
-
-<!-- 색종이 컨테이너 -->
 <div class="confetti-container" id="confettiContainer"></div>
 {% endblock %}
 
 {% block extra_css %}
 {{ chat_resources() }}
+<style>
+
+/* 버튼 비활성화 스타일 개선 */
+button:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+button:disabled:hover {
+    background-color: inherit !important;
+    transform: none !important;
+}
+
+/* 게임 보드 하이라이트 효과 */
+#omokBoard {
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+#omokBoard.highlight {
+    box-shadow: 0 0 15px rgba(0, 150, 255, 0.3);
+    border-color: #0096ff;
+}
+
+#omokBoard.invalid-move {
+    border-color: #ff4444;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 {{ chat_init_script() }}
+<script src="/static/js/omok.js"></script>
 <script>
+<<<<<<< HEAD
 const canvas = document.getElementById('omokBoard');
 const ctx = canvas.getContext('2d');
 const roomId = '{{ room_id }}';
@@ -111,33 +133,30 @@ let connectionStatus = 'disconnected'; // 'connected', 'disconnected', 'reconnec
 let gameState = {
     board: Array(15).fill(null).map(() => Array(15).fill(0)),
     currentPlayer: 1
+=======
+// 서버에서 전달된 동적 데이터
+window.omokGameConfig = {
+    roomId: '{{ room_id }}',
+    sessionId: '{{ session_id }}',
+    gameState: {{ game_state | tojson | safe }},
+    playerData: {{ player_data | tojson | safe }}
+>>>>>>> fix/turn-display-and-field-naming
 };
-let myPlayerNumber = null;
-let players = [];
-let gameEnded = false;
-let waitingForRestart = false;
-let lastMove = null;
-let hoverPosition = null;
-let winningLine = null;
-let stoneAnimations = new Map();
-let gameStats = { moves: 0, startTime: null };
-let waitingForUndo = false;
-let winnerNumber = null;
-let myNickname = null;
 
+<<<<<<< HEAD
 // 연결 상태 업데이트
 function updateConnectionStatus(status, text) {
     connectionStatus = status;
     const statusElement = document.getElementById('connectionStatus');
     const iconElement = document.getElementById('connectionIcon');
     const textElement = document.getElementById('connectionText');
-    
+
     if (status === 'connected') {
         statusElement.style.display = 'none';
     } else {
         statusElement.style.display = 'block';
         statusElement.className = `connection-status ${status}`;
-        
+
         if (status === 'disconnected') {
             iconElement.textContent = '🔴';
             textElement.textContent = text || '연결 끊김';
@@ -152,20 +171,20 @@ function updateConnectionStatus(status, text) {
 function connectWebSocket(isReconnect = false) {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${window.location.host}/ws/${roomId}`;
-    
+
     try {
         ws = new WebSocket(wsUrl);
-        
+
         ws.onopen = function() {
             console.log('WebSocket connected');
             updateConnectionStatus('connected');
             reconnectAttempts = 0;
-            
+
             // 채팅 연결 설정
             if (myNickname) {
                 setupChatConnection(ws, myNickname);
             }
-            
+
             if (isReconnect) {
                 // 재연결 시 세션 복원
                 ws.send(JSON.stringify({
@@ -174,11 +193,11 @@ function connectWebSocket(isReconnect = false) {
                 }));
             }
         };
-        
+
         ws.onmessage = handleWebSocketMessage;
         ws.onclose = handleWebSocketClose;
         ws.onerror = handleWebSocketError;
-        
+
     } catch (error) {
         console.error('WebSocket connection failed:', error);
         handleConnectionFailure();
@@ -195,12 +214,12 @@ function attemptReconnect() {
         ]);
         return;
     }
-    
+
     reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
-    
+
     updateConnectionStatus('reconnecting', `재연결 시도 중... (${reconnectAttempts}/${maxReconnectAttempts})`);
-    
+
     reconnectTimeout = setTimeout(() => {
         console.log(`Reconnection attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
         connectWebSocket(true);
@@ -210,20 +229,20 @@ function attemptReconnect() {
 // WebSocket 닫힘 처리
 function handleWebSocketClose(event) {
     console.log('WebSocket closed:', event);
-    
+
     if (event.code === 1000) {
         // 정상 종료
         updateConnectionStatus('disconnected', '연결 종료');
         return;
     }
-    
+
     // 비정상 종료 - 재연결 시도
     updateConnectionStatus('disconnected', '연결 끊김');
-    
+
     if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
     }
-    
+
     // 즉시 첫 번째 재연결 시도
     setTimeout(() => attemptReconnect(), 1000);
 }
@@ -242,34 +261,34 @@ function handleConnectionFailure() {
 // 오목판 그리기
 function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // 동적 크기 계산
     const boardSize = Math.min(canvas.width, canvas.height);
     const cellSize = (boardSize - 60) / 14; // 여백 30px씩 빼고 14칸으로 나눔
     const margin = (boardSize - cellSize * 14) / 2;
-    
+
     // 배경
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     // 격자 그리기
     ctx.strokeStyle = '#000';
     ctx.lineWidth = Math.max(1, cellSize / 30); // 크기에 비례한 선 굵기
-    
+
     for (let i = 0; i < 15; i++) {
         // 세로선
         ctx.beginPath();
         ctx.moveTo(margin + i * cellSize, margin);
         ctx.lineTo(margin + i * cellSize, boardSize - margin);
         ctx.stroke();
-        
+
         // 가로선
         ctx.beginPath();
         ctx.moveTo(margin, margin + i * cellSize);
         ctx.lineTo(boardSize - margin, margin + i * cellSize);
         ctx.stroke();
     }
-    
+
     // 중심점 그리기
     const centerPoints = [[7, 7], [3, 3], [3, 11], [11, 3], [11, 11]];
     ctx.fillStyle = '#000';
@@ -278,7 +297,7 @@ function drawBoard() {
         ctx.arc(margin + x * cellSize, margin + y * cellSize, Math.max(2, cellSize / 10), 0, 2 * Math.PI);
         ctx.fill();
     });
-    
+
     // 마우스 오버 미리보기 (실제 돌 그리기 전에)
     const myPlayer = players.find(p => p.player_number === myPlayerNumber);
     if (hoverPosition && !gameEnded && players.length === 2 && myPlayer && gameState.currentPlayer === myPlayer.color) {
@@ -294,7 +313,7 @@ function drawBoard() {
             ctx.stroke();
         }
     }
-    
+
     // 돌 그리기
     const stoneRadius = Math.max(8, cellSize * 0.4);
     for (let y = 0; y < 15; y++) {
@@ -302,10 +321,10 @@ function drawBoard() {
             if (gameState.board[y][x] !== 0) {
                 // 돌 그리기 애니메이션 효과
                 ctx.save();
-                
+
                 const centerX = margin + x * cellSize;
                 const centerY = margin + y * cellSize;
-                
+
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, stoneRadius, 0, 2 * Math.PI);
                 ctx.fillStyle = gameState.board[y][x] === 1 ? '#000' : '#fff';
@@ -313,7 +332,7 @@ function drawBoard() {
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = Math.max(1, cellSize / 30);
                 ctx.stroke();
-                
+
                 // 최근 둔 수 강조
                 if (lastMove && lastMove.x === x && lastMove.y === y) {
                     ctx.beginPath();
@@ -322,7 +341,7 @@ function drawBoard() {
                     ctx.lineWidth = Math.max(2, cellSize / 15);
                     ctx.stroke();
                 }
-                
+
                 // 승리 라인 강조
                 if (winningLine && winningLine.some(pos => pos.x === x && pos.y === y)) {
                     ctx.beginPath();
@@ -330,18 +349,18 @@ function drawBoard() {
                     ctx.strokeStyle = '#ffd700';
                     ctx.lineWidth = Math.max(3, cellSize / 10);
                     ctx.stroke();
-                    
+
                     // 반짝이는 효과
                     const time = Date.now();
                     const pulse = Math.sin(time / 200) * 0.3 + 0.7;
                     ctx.beginPath();
                     ctx.arc(centerX, centerY, stoneRadius * pulse, 0, 2 * Math.PI);
-                    ctx.fillStyle = gameState.board[y][x] === 1 ? 
-                        `rgba(255, 215, 0, ${0.3 * pulse})` : 
+                    ctx.fillStyle = gameState.board[y][x] === 1 ?
+                        `rgba(255, 215, 0, ${0.3 * pulse})` :
                         `rgba(255, 215, 0, ${0.2 * pulse})`;
                     ctx.fill();
                 }
-                
+
                 ctx.restore();
             }
         }
@@ -353,11 +372,11 @@ function checkWin(board, x, y, player) {
     const directions = [
         [0, 1], [1, 0], [1, 1], [1, -1]
     ];
-    
+
     for (let [dx, dy] of directions) {
         let count = 1;
         let winLine = [{x, y}];
-        
+
         // 한 방향으로 확인
         for (let i = 1; i < 5; i++) {
             const nx = x + dx * i;
@@ -369,7 +388,7 @@ function checkWin(board, x, y, player) {
                 break;
             }
         }
-        
+
         // 반대 방향으로 확인
         for (let i = 1; i < 5; i++) {
             const nx = x - dx * i;
@@ -381,12 +400,12 @@ function checkWin(board, x, y, player) {
                 break;
             }
         }
-        
+
         if (count == 5) {
             return winLine; // 정확히 5개만 반환
         }
     }
-    
+
     return null;
 }
 
@@ -394,10 +413,10 @@ function checkWin(board, x, y, player) {
 function showModal(title, body, buttons = []) {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalBody').innerHTML = body;
-    
+
     const footer = document.getElementById('modalFooter');
     footer.innerHTML = '';
-    
+
     buttons.forEach(button => {
         const btn = document.createElement('button');
         btn.className = `modal-button ${button.class || 'secondary'}`;
@@ -405,7 +424,7 @@ function showModal(title, body, buttons = []) {
         btn.onclick = button.onclick;
         footer.appendChild(btn);
     });
-    
+
     document.getElementById('modalOverlay').classList.add('show');
 }
 
@@ -416,19 +435,19 @@ function hideModal() {
 function showWinModal(winner, isMyWin) {
     const modal = document.getElementById('modal');
     modal.className = 'modal win-modal';
-    
+
     const icon = isMyWin ? '🎉' : '😔';
     const iconClass = isMyWin ? 'victory' : 'defeat';
     const messageClass = isMyWin ? 'victory' : 'defeat';
     const message = isMyWin ? '승리!' : '패배';
     const submessage = isMyWin ? '축하합니다!' : '다음에 더 잘해보세요!';
-    
+
     const body = `
         <div class="win-icon ${iconClass}">${icon}</div>
         <div class="win-message ${messageClass}">${message}</div>
         <div class="win-submessage">${submessage}</div>
     `;
-    
+
     showModal('게임 종료', body, [
         {
             text: '확인',
@@ -463,7 +482,7 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
 }
 
 function showRestartRequestModal(requesterName) {
-    showModal('게임 재시작 요청', 
+    showModal('게임 재시작 요청',
         `${requesterName}님이 게임 재시작을 요청했습니다.<br>재시작하시겠습니까?`, [
         {
             text: '거부',
@@ -500,11 +519,11 @@ function handleHover(e) {
         drawBoard();
         return;
     }
-    
+
     const pos = getEventPosition(e);
     const x = pos.x;
     const y = pos.y;
-    
+
     if (x >= 0 && x < 15 && y >= 0 && y < 15) {
         hoverPosition = [x, y];
         drawBoard();
@@ -530,20 +549,20 @@ function getEventPosition(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    
+
     // 캔버스의 실제 크기와 화면 크기의 비율 계산
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
+
     // 스케일링을 고려한 좌표 계산
     const canvasX = (clientX - rect.left) * scaleX;
     const canvasY = (clientY - rect.top) * scaleY;
-    
+
     // 동적 크기 계산 (drawBoard 함수와 동일)
     const boardSize = Math.min(canvas.width, canvas.height);
     const cellSize = (boardSize - 60) / 14;
     const margin = (boardSize - cellSize * 14) / 2;
-    
+
     return {
         x: Math.round((canvasX - margin) / cellSize),
         y: Math.round((canvasY - margin) / cellSize)
@@ -556,16 +575,16 @@ function handleGameMove(e) {
     if (!ws || players.length < 2 || !myPlayer || gameState.currentPlayer !== myPlayer.color || gameEnded) {
         return;
     }
-    
+
     const pos = getEventPosition(e);
     const x = pos.x;
     const y = pos.y;
-    
+
     if (x >= 0 && x < 15 && y >= 0 && y < 15 && gameState.board[y][x] === 0) {
         // 돌 놓기 - 플레이어의 색상으로
         gameState.board[y][x] = myPlayer.color;
         lastMove = {x, y};
-        
+
         // 총 수 횟수를 보드의 돌 개수로 계산
         gameStats.moves = 0;
         for (let dy = 0; dy < 15; dy++) {
@@ -575,7 +594,7 @@ function handleGameMove(e) {
                 }
             }
         }
-        
+
         // 승리 확인
         const winLine = checkWin(gameState.board, x, y, myPlayer.color);
         if (winLine) {
@@ -592,10 +611,10 @@ function handleGameMove(e) {
             }));
             return;
         }
-        
+
         // 턴 변경
         gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
-        
+
         // 서버에 전송
         ws.send(JSON.stringify({
             type: 'move',
@@ -603,7 +622,7 @@ function handleGameMove(e) {
             last_move: lastMove,
             session_id: sessionId
         }));
-        
+
         drawBoard();
         updateUI();
         updateUndoButton();
@@ -617,10 +636,10 @@ canvas.addEventListener('touchend', handleGameMove);
 function handleWebSocketMessage(event) {
     const data = JSON.parse(event.data);
     console.log('Received WebSocket message:', data);
-    
+
     // 채팅 메시지 처리
     handleChatWebSocketMessage(data);
-    
+
     if (data.type === 'room_update') {
         players = data.room.players;
         if (myPlayerNumber === null && players.length > 0) {
@@ -628,7 +647,7 @@ function handleWebSocketMessage(event) {
             const myPlayer = players.find(p => p.nickname === currentNickname);
             if (myPlayer) {
                 myPlayerNumber = myPlayer.player_number;
-                
+
                 // 세션 정보 업데이트 (플레이어 번호 추가)
                 saveGameSession({
                     nickname: currentNickname,
@@ -640,7 +659,7 @@ function handleWebSocketMessage(event) {
             }
         }
         updateUI();
-        
+
         if (players.length === 1) {
             showToast('입장 완료', '상대방을 기다리고 있습니다...', 'info', 5000);
             showGameArea();
@@ -668,7 +687,7 @@ function handleWebSocketMessage(event) {
         if (data.room && data.room.winner) {
             winnerNumber = data.room.winner;
         }
-        
+
         // 채팅 히스토리 복원
         if (data.room && data.room.chat_history) {
             // 채팅 메시지들을 채팅 시스템에 복원
@@ -678,13 +697,13 @@ function handleWebSocketMessage(event) {
                 }
             });
         }
-        
+
         // 무브 히스토리에서 마지막 수 복원
         if (data.move_history && data.move_history.length > 0) {
             const lastMoveEntry = data.move_history[data.move_history.length - 1];
             lastMove = lastMoveEntry.move;
         }
-        
+
         // 총 수 횟수를 보드의 돌 개수로 계산
         gameStats.moves = 0;
         for (let y = 0; y < 15; y++) {
@@ -694,7 +713,7 @@ function handleWebSocketMessage(event) {
                 }
             }
         }
-        
+
         showGameArea();
         drawBoard();
         updateUI();
@@ -730,7 +749,7 @@ function handleWebSocketMessage(event) {
         if (data.winning_line) {
             winningLine = data.winning_line;
         }
-        
+
         // 총 수 횟수를 보드의 돌 개수로 계산
         gameStats.moves = 0;
         for (let y = 0; y < 15; y++) {
@@ -740,20 +759,20 @@ function handleWebSocketMessage(event) {
                 }
             }
         }
-        
+
         winnerNumber = data.winner;
         const isMyWin = data.winner === myPlayerNumber;
         if (isMyWin) {
             createConfetti(); // 내가 이겼을 때만 색종이 효과
         }
-        
+
         // 승리 애니메이션 시작
         startWinAnimation();
-        
+
         setTimeout(() => showWinModal(data.winner, isMyWin), 1500);
     } else if (data.type === 'restart_request') {
         const requesterName = players.find(p => p.player_number === data.from)?.nickname || '상대방';
-        
+
         if (data.is_requester) {
             // 요청자에게는 대기 메시지 표시
             showModal('게임 재시작 요청', '상대방에게 재시작 요청을 보냈습니다. 응답을 기다리는 중...', [
@@ -771,16 +790,16 @@ function handleWebSocketMessage(event) {
         winnerNumber = null;
         gameStats = { moves: 0, startTime: Date.now() };
         gameState = data.game_state;
-        
+
         // 플레이어 색상 정보 업데이트
         if (data.players) {
             players = data.players;
         }
-        
+
         hideModal(); // 요청자의 대기 모달 자동 닫기
         drawBoard();
         updateUI();
-        
+
         const gameNum = data.games_played || 1;
         showToast('게임 재시작', `${gameNum}번째 게임이 시작되었습니다!`, 'success');
     } else if (data.type === 'restart_rejected') {
@@ -790,7 +809,7 @@ function handleWebSocketMessage(event) {
         ]);
     } else if (data.type === 'undo_request') {
         const requesterName = players.find(p => p.player_number === data.from)?.nickname || '상대방';
-        
+
         if (data.is_requester) {
             // 요청자에게는 대기 메시지 표시
             showModal('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', [
@@ -848,13 +867,13 @@ function joinGame() {
         ]);
         return;
     }
-    
+
     // 닉네임 저장
     myNickname = nickname;
-    
+
     // WebSocket 연결
     connectWebSocket();
-    
+
     // 연결되면 JOIN 메시지 전송
     const waitForConnection = () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -866,7 +885,7 @@ function joinGame() {
                 nickname: nickname,
                 session_id: sessionId
             }));
-            
+
             // 세션 정보 저장
             saveGameSession({
                 nickname: nickname,
@@ -877,7 +896,7 @@ function joinGame() {
             setTimeout(waitForConnection, 100);
         }
     };
-    
+
     waitForConnection();
 }
 
@@ -887,10 +906,10 @@ function continueExistingGame() {
         // 기존 세션 데이터 복원
         myNickname = window.pendingSessionData.nickname;
         myPlayerNumber = window.pendingSessionData.playerNumber;
-        
+
         // WebSocket 연결하고 재연결 시도
         connectWebSocket();
-        
+
         const waitForConnection = () => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 console.log('Attempting reconnection with session:', window.pendingSessionData.sessionId);
@@ -903,7 +922,7 @@ function continueExistingGame() {
                 setTimeout(waitForConnection, 100);
             }
         };
-        
+
         waitForConnection();
     }
 }
@@ -912,11 +931,11 @@ function continueExistingGame() {
 function startNewGame() {
     // 로컬 세션 정보 삭제
     clearGameSession();
-    
+
     // UI를 닉네임 입력 화면으로 전환
     document.getElementById('existingGameForm').style.display = 'none';
     document.getElementById('nicknameForm').style.display = 'block';
-    
+
     // 기존 세션 데이터 초기화
     window.pendingSessionData = null;
 }
@@ -930,7 +949,7 @@ function updateUI() {
         let itemClass = 'player-item';
         if (isCurrentPlayer) itemClass += ' active';
         if (isMe && isCurrentPlayer) itemClass += ' my-turn';
-        
+
         return `
             <div class="${itemClass}">
                 <div class="player-name">${p.nickname}${isMe ? ' (나)' : ''}</div>
@@ -941,7 +960,7 @@ function updateUI() {
             </div>
         `;
     }).join('');
-    
+
     // 현재 턴 표시 - 색상 기준으로 변경
     const currentTurn = document.getElementById('currentTurn');
     const currentPlayer = players.find(p => p.color === gameState.currentPlayer);
@@ -959,17 +978,17 @@ function updateUI() {
     } else {
         currentTurn.textContent = '-';
     }
-    
+
     // 게임 정보 업데이트
     document.getElementById('moveCount').textContent = gameStats.moves;
-    
+
     if (gameStats.startTime) {
         const elapsed = Math.floor((Date.now() - gameStats.startTime) / 1000);
         const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
         const seconds = (elapsed % 60).toString().padStart(2, '0');
         document.getElementById('gameTime').textContent = `${minutes}:${seconds}`;
     }
-    
+
     // 게임 상태 업데이트
     const gameStatus = document.getElementById('gameStatus');
     if (players.length === 0) {
@@ -998,14 +1017,14 @@ function requestRestart() {
     if (!ws || waitingForRestart) {
         return;
     }
-    
+
     if (!gameEnded) {
         showModal('알림', '게임이 진행 중입니다. 게임이 끝난 후 재시작할 수 있습니다.', [
             { text: '확인', class: 'primary', onclick: hideModal }
         ]);
         return;
     }
-    
+
     waitingForRestart = true;
     ws.send(JSON.stringify({
         type: 'restart_request',
@@ -1018,7 +1037,7 @@ function requestUndo() {
     if (!ws || waitingForUndo || gameEnded || gameStats.moves === 0) {
         return;
     }
-    
+
     const myPlayer = players.find(p => p.player_number === myPlayerNumber);
     if (myPlayer && gameState.currentPlayer === myPlayer.color) {
         showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.', [
@@ -1026,7 +1045,7 @@ function requestUndo() {
         ]);
         return;
     }
-    
+
     waitingForUndo = true;
     ws.send(JSON.stringify({
         type: 'undo_request',
@@ -1036,7 +1055,7 @@ function requestUndo() {
 }
 
 function showUndoRequestModal(requesterName) {
-    showModal('무르기 요청', 
+    showModal('무르기 요청',
         `${requesterName}님이 무르기를 요청했습니다.<br>마지막 수를 취소하시겠습니까?`, [
         {
             text: '거부',
@@ -1069,7 +1088,7 @@ function updateUndoButton() {
     const undoButton = document.getElementById('undoButton');
     if (undoButton) {
         const myPlayer = players.find(p => p.player_number === myPlayerNumber);
-        const canUndo = ws && !gameEnded && !waitingForUndo && 
+        const canUndo = ws && !gameEnded && !waitingForUndo &&
                        gameStats.moves > 0 && myPlayer && gameState.currentPlayer !== myPlayer.color;
         undoButton.disabled = !canUndo;
         undoButton.style.opacity = canUndo ? '1' : '0.5';
@@ -1083,139 +1102,25 @@ function confirmLeaveRoom() {
         () => {
             // 세션 정보 삭제
             clearGameSession();
-            
+
             if (ws) {
                 ws.close();
             }
             window.location.href = '/';
         }
+=======
+// OmokGameClient 인스턴스 생성 및 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    window.omokClient = new OmokGameClient(
+        window.omokGameConfig.roomId,
+        window.omokGameConfig.sessionId,
+        window.omokGameConfig.gameState,
+        window.omokGameConfig.playerData
+>>>>>>> fix/turn-display-and-field-naming
     );
-}
-
-// 토스트 알림 시스템
-function showToast(title, message, type = 'info', duration = 3000) {
-    const toastContainer = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    
-    toast.innerHTML = `
-        <div class="toast-title">${title}</div>
-        <div class="toast-message">${message}</div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    // 애니메이션 시작
-    setTimeout(() => toast.classList.add('show'), 100);
-    
-    // 자동 제거
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
-    }, duration);
-}
-
-// 색종이 효과
-function createConfetti() {
-    const container = document.getElementById('confettiContainer');
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7'];
-    
-    for (let i = 0; i < 50; i++) {
-        const confetti = document.createElement('div');
-        confetti.className = 'confetti';
-        confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        confetti.style.animationDelay = Math.random() * 3 + 's';
-        confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
-        container.appendChild(confetti);
-        
-        // 애니메이션 완료 후 제거
-        setTimeout(() => {
-            if (confetti.parentNode) {
-                confetti.parentNode.removeChild(confetti);
-            }
-        }, 5000);
-    }
-}
-
-// 승리 애니메이션 함수
-function startWinAnimation() {
-    let animationFrame = 0;
-    const animate = () => {
-        drawBoard();
-        animationFrame++;
-        if (animationFrame < 100) {
-            requestAnimationFrame(animate);
-        }
-    };
-    animate();
-}
-
-// 게임 시간 업데이트 타이머
-let gameTimer = null;
-
-function startGameTimer() {
-    if (gameTimer) clearInterval(gameTimer);
-    gameTimer = setInterval(() => {
-        if (gameStats.startTime && !gameEnded) {
-            updateUI();
-        }
-    }, 1000);
-}
-
-function stopGameTimer() {
-    if (gameTimer) {
-        clearInterval(gameTimer);
-        gameTimer = null;
-    }
-}
-
-// 모바일 레이아웃 조정
-function adjustMobileLayout() {
-    const gameLayout = document.getElementById('gameLayout');
-    const canvas = document.getElementById('omokBoard');
-    
-    if (!canvas) return; // 캔버스가 없으면 리턴
-    
-    if (window.innerWidth <= 768) {
-        gameLayout.style.flexDirection = 'column';
-        gameLayout.style.gap = '15px';
-        
-        // 캔버스 크기 조정 - transform 대신 실제 크기 변경
-        const size = Math.min(window.innerWidth - 60, 320);
-        canvas.style.width = size + 'px';
-        canvas.style.height = size + 'px';
-        canvas.width = size;
-        canvas.height = size;
-        
-        // transform 제거 (더 정확한 좌표 계산을 위해)
-        canvas.style.transform = '';
-        canvas.style.transformOrigin = '';
-        
-        drawBoard();
-    } else {
-        gameLayout.style.flexDirection = 'row';
-        gameLayout.style.gap = '20px';
-        
-        canvas.style.width = '450px';
-        canvas.style.height = '450px';
-        canvas.width = 450;
-        canvas.height = 450;
-        canvas.style.transform = '';
-        canvas.style.transformOrigin = '';
-        
-        drawBoard();
-    }
-}
-
-window.addEventListener('resize', adjustMobileLayout);
-window.addEventListener('orientationchange', function() {
-    setTimeout(adjustMobileLayout, 100);
+    window.omokClient.initialize();
 });
+<<<<<<< HEAD
 
 // 로컬 스토리지 키
 const STORAGE_KEYS = {
@@ -1241,20 +1146,20 @@ function loadGameSession() {
     try {
         const data = localStorage.getItem(STORAGE_KEYS.GAME_SESSION);
         if (!data) return null;
-        
+
         const session = JSON.parse(data);
-        
+
         // 24시간 초과된 세션은 삭제
         if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
             localStorage.removeItem(STORAGE_KEYS.GAME_SESSION);
             return null;
         }
-        
+
         // 같은 방인지 확인
         if (session.roomId !== roomId) {
             return null;
         }
-        
+
         return session;
     } catch (error) {
         console.error('Failed to load game session:', error);
@@ -1275,21 +1180,21 @@ function clearGameSession() {
 // 세션 확인 및 초기화
 function checkExistingSession() {
     const hostNickname = sessionStorage.getItem('hostNickname');
-    
+
     // 서버에서 전달된 게임 상태나 플레이어 데이터가 있는지 확인
     const serverGameState = {{ game_state | tojson | safe }};
     const serverPlayerData = {{ player_data | tojson | safe }};
-    
+
     // 로컬 스토리지에서 기존 게임 세션 확인
     const localSession = loadGameSession();
-    
+
     if (localSession && localSession.nickname && localSession.sessionId) {
         // 로컬 스토리지에 기존 게임 세션이 있는 경우
         console.log('Found local game session:', localSession);
         showExistingGamePrompt(localSession);
         return;
     }
-    
+
     if (serverPlayerData && serverPlayerData.nickname) {
         // 서버에서 전달된 세션이 있는 경우
         console.log('Found server session:', serverPlayerData);
@@ -1300,7 +1205,7 @@ function checkExistingSession() {
         });
         return;
     }
-    
+
     // 호스트 닉네임이 있는 경우 (방 생성자)
     if (hostNickname) {
         const nicknameInput = document.getElementById('nicknameInput');
@@ -1321,12 +1226,12 @@ function checkExistingSession() {
 function showExistingGamePrompt(sessionData) {
     document.getElementById('nicknameForm').style.display = 'none';
     document.getElementById('existingGameForm').style.display = 'block';
-    
+
     // 기존 게임 정보 표시
     const existingGameForm = document.getElementById('existingGameForm');
-    existingGameForm.querySelector('p').innerHTML = 
+    existingGameForm.querySelector('p').innerHTML =
         `진행 중인 게임이 있습니다. (${sessionData.nickname})<br>어떻게 하시겠습니까?`;
-    
+
     // 전역 변수에 세션 데이터 저장
     window.pendingSessionData = sessionData;
 }
@@ -1335,7 +1240,7 @@ function showExistingGamePrompt(sessionData) {
 function initializeGame() {
     // 기존 세션 확인
     checkExistingSession();
-    
+
     // UI 초기화
     drawBoard();
     startGameTimer();
@@ -1344,5 +1249,7 @@ function initializeGame() {
 
 // 초기화
 initializeGame();
+=======
+>>>>>>> fix/turn-display-and-field-naming
 </script>
 {% endblock %}

@@ -1,0 +1,27 @@
+# 개발 환경 오버라이드 설정
+# 사용법: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  lupin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # 개발 스테이지 사용
+    container_name: lupin-game-dev  # 운영 컨테이너와 구분
+    ports:
+      - "8001:8000"  # 직접 포트 노출 (운영과 다른 포트)
+      - "8003:8003"  # 모니터링 API 포트
+    volumes:
+      - ./app:/app/app  # 코드 핫 리로드
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./config:/app/config
+    user: "${UID:-1000}:${GID:-1000}"  # 호스트 사용자와 권한 동기화
+    environment:
+      - LUPIN_ENV=development
+      - DEBUG=true
+      - RELOAD=true  # uvicorn 핫 리로드
+      - LOG_LEVEL=DEBUG
+    restart: "no"  # 개발 시 자동 재시작 비활성화
+    networks:
+      - default  # 기본 네트워크 사용 (proxy_network 불필요)

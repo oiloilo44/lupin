@@ -1,14 +1,54 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
 build/
 dist/
 wheels/
-*.egg-info
 
-# Dot files and directories
-/.*
-!/.dockerignore
+# Virtual Environment
+.venv/
+venv/
+.env*
+.python-version
 
-# md files without README.md
+# IDE & Editor
+.*/
+.idea/
+*.swp
+*.swo
+*~
+
+# Development Tools
+.mypy_cache/
+.pytest_cache/
+.coverage
+
+# Project Specific
+*.log
+game_errors.log
+
+# Documentation (except README files)
 /*.md
+!README*.md
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

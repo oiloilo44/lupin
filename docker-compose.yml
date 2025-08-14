@@ -1,34 +1,18 @@
+# 공통 베이스 설정
+# 개발: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# 운영: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+
 services:
   lupin:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: lupin-game
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.lupin.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
-      - traefik.http.routers.lupin.tls=true
-      - traefik.http.routers.lupin.entrypoints=web,websecure
-      - traefik.http.routers.lupin.tls.certresolver=mytlschallenge
-      - traefik.http.services.lupin.loadbalancer.server.port=8000
-      - traefik.http.middlewares.lupin-headers.headers.SSLRedirect=true
-      - traefik.http.middlewares.lupin-headers.headers.STSSeconds=315360000
-      - traefik.http.middlewares.lupin-headers.headers.browserXSSFilter=true
-      - traefik.http.middlewares.lupin-headers.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.lupin-headers.headers.forceSTSHeader=true
-      - traefik.http.middlewares.lupin-headers.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.lupin-headers.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.lupin-headers.headers.STSPreload=true
-      - traefik.http.routers.lupin.middlewares=lupin-headers@docker
-    networks:
-      - proxy_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-
-networks:
-  proxy_network:
-    external: true

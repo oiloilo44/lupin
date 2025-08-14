@@ -1,0 +1,16 @@
+# 개발 환경 설정 (default.yaml을 상속)
+server:
+  debug: true
+
+logging:
+  level: "DEBUG"
+
+# 개발용 빠른 설정
+room:
+  default_cleanup_delay: 300  # 5분으로 단축
+
+omok:
+  timeouts:
+    move_timeout: 60          # 개발용으로 1분 연장
+    reconnect_timeout: 3600   # 1시간으로 연장
+    cleanup_delay: 300        # 5분으로 단축

@@ -3,10 +3,10 @@
 function showModal(title, body, buttons = []) {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalBody').innerHTML = body;
-    
+
     const footer = document.getElementById('modalFooter');
     footer.innerHTML = '';
-    
+
     buttons.forEach(button => {
         const btn = document.createElement('button');
         btn.className = `modal-button ${button.class || 'secondary'}`;
@@ -14,7 +14,7 @@ function showModal(title, body, buttons = []) {
         btn.onclick = button.onclick;
         footer.appendChild(btn);
     });
-    
+
     document.getElementById('modalOverlay').classList.add('show');
 }
 

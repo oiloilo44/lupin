@@ -1,5 +1,5 @@
 from .base import BaseGameManager
-from .omok_manager import OmokManager
 from .janggi_manager import JanggiManager
+from .omok_manager import OmokManager
 
-__all__ = ['BaseGameManager', 'OmokManager', 'JanggiManager']
+__all__ = ["BaseGameManager", "OmokManager", "JanggiManager"]

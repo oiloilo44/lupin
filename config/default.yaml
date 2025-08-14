@@ -1,0 +1,37 @@
+# 기본 서버 설정
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+
+# WebSocket 설정
+websocket:
+  ping_interval: 20       # WebSocket ping 간격 (초)
+  ping_timeout: 10        # WebSocket ping 타임아웃 (초)
+  max_connections: 1000   # 최대 동시 연결 수
+
+# 방 관리 설정
+room:
+  max_rooms: 500          # 최대 방 개수
+  default_cleanup_delay: 1800  # 기본 방 정리 지연 시간 (30분)
+  inactive_threshold: 3600     # 비활성 임계값 (1시간)
+
+# 이벤트 시스템 설정
+events:
+  max_queue_size: 10000   # 이벤트 큐 최대 크기
+  default_priority: 100   # 기본 이벤트 우선순위
+  timeout: 5              # 이벤트 처리 타임아웃 (초)
+
+# 로깅 설정
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_log_length: 100     # 로그 메시지 최대 길이
+
+# 보안 설정
+security:
+  session_timeout: 86400  # 세션 타임아웃 (24시간)
+  max_message_size: 1024  # 최대 메시지 크기 (바이트)
+  rate_limit:
+    requests_per_minute: 60
+    burst_size: 10
