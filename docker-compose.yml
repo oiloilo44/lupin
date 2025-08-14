@@ -10,7 +10,6 @@ services:
     container_name: lupin-game
     environment:
       - PYTHONUNBUFFERED=1
-      - LUPIN_ENV=${LUPIN_ENV:-development}
     restart: unless-stopped
     logging:
       driver: json-file

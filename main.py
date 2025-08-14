@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_config
 from app.routes import router
+from app.api.health_routes import router as health_router
 
 # FastAPI 앱 생성
 app = FastAPI(title="Lupin - 월급루팡 게임 사이트")
@@ -14,6 +15,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 라우터 등록
 app.include_router(router)
+app.include_router(health_router)
 
 if __name__ == "__main__":
     import sys

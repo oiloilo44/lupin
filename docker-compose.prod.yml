@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production  # 프로덕션 스테이지 사용
+      target: production
     environment:
       - LUPIN_ENV=production
       - DEBUG=false
@@ -32,7 +32,7 @@ services:
     networks:
       - proxy_network
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

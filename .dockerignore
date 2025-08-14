@@ -30,11 +30,14 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
-# Docker
-Dockerfile
+# Docker (빌드 컨텍스트에서 제외)
 docker-compose*.yml
 .dockerignore
 
-# Documentation
-README.md
-*.m
+# Documentation (컨테이너에 불필요)
+README*.md
+*.md
+
+# Temporary files
+*.tmp
+*.temp

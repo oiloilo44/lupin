@@ -3,12 +3,13 @@
 from datetime import datetime
 from typing import Any, Dict, cast
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
 
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.performance import get_performance_monitor
 from ..room_manager import room_manager
-from ..session_manager import SessionManager
+from ..session_manager import SessionManager, session_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -21,26 +22,15 @@ performance_monitor = get_performance_monitor()
 async def health_check() -> Dict[str, Any]:
     """기본 헬스체크 - Docker healthcheck용."""
     try:
-        # 기본 서비스 상태 확인
-        session_manager_status = (
-            hasattr(SessionManager, "_instances")
-            and SessionManager._instances is not None
-        )
-        room_manager_status = room_manager is not None
-
-        if session_manager_status and room_manager_status:
-            return {
-                "status": "healthy",
-                "timestamp": datetime.now().isoformat(),
-                "service": "lupin-game",
-            }
-        else:
-            return Response(
-                content={"status": "unhealthy", "error": "Core services not ready"},
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        # 최소한의 헬스체크 - 서버가 응답하면 healthy
+        # 세부 서비스 상태는 /health/detailed 에서 확인
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "service": "lupin-game",
+        }
     except Exception as e:
-        return Response(
+        return JSONResponse(
             content={"status": "unhealthy", "error": str(e)},
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
@@ -59,8 +49,11 @@ async def readiness_probe() -> Dict[str, Any]:
         # 서비스 준비 상태 확인
         checks = {
             "session_manager": (
-                hasattr(SessionManager, "_instances")
-                and SessionManager._instances is not None
+                session_manager is not None 
+                and hasattr(session_manager, 'sessions')
+                and isinstance(session_manager.sessions, dict)
+                and hasattr(session_manager, 'create_session')
+                and hasattr(session_manager, 'get_session_data')
             ),
             "room_manager": room_manager is not None,
             "metrics_collector": metrics_collector is not None,
@@ -76,7 +69,7 @@ async def readiness_probe() -> Dict[str, Any]:
                 "checks": checks,
             }
         else:
-            return Response(
+            return JSONResponse(
                 content={
                     "status": "not_ready",
                     "timestamp": datetime.now().isoformat(),
@@ -85,7 +78,7 @@ async def readiness_probe() -> Dict[str, Any]:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
     except Exception as e:
-        return Response(
+        return JSONResponse(
             content={
                 "status": "error",
                 "error": str(e),
