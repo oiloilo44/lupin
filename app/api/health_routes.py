@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.performance import get_performance_monitor
 from ..room_manager import room_manager
-from ..session_manager import SessionManager, session_manager
+from ..session_manager import session_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -93,10 +93,7 @@ async def detailed_health() -> Dict[str, Any]:
     """상세 헬스체크 - 모니터링 대시보드용."""
     try:
         # 세션 통계
-        session_manager_instance = SessionManager()
-        sessions = getattr(
-            session_manager_instance, "sessions", {}
-        )  # sessions 속성 사용
+        sessions = session_manager.sessions
         session_stats = {
             "total_sessions": len(sessions),
             "active_sessions": sum(
@@ -111,9 +108,7 @@ async def detailed_health() -> Dict[str, Any]:
         room_stats = {
             "total_rooms": len(room_manager.rooms),
             "active_games": sum(
-                1
-                for room in room_manager.rooms.values()
-                if len(room.players) == 2
+                1 for room in room_manager.rooms.values() if len(room.players) == 2
             ),
         }
 
@@ -131,9 +126,7 @@ async def detailed_health() -> Dict[str, Any]:
         ws_stats = cast(
             Dict[str, Any],
             (
-                getattr(
-                    performance_monitor, "get_connection_metrics", lambda: {}
-                )()
+                getattr(performance_monitor, "get_connection_metrics", lambda: {})()
                 if performance_monitor
                 else {}
             ),

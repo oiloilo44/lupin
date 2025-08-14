@@ -10,24 +10,21 @@ WORKDIR /app
 # UV 설치 (고성능 Python 패키지 매니저)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 의존성 파일 복사
+# 의존성 파일만 먼저 복사 (캐싱 최적화)
 COPY pyproject.toml uv.lock ./
 
-# 공통 빌드 스테이지 - 애플리케이션 코드 복사
-FROM base as app-base
+# 개발 스테이지
+FROM base as development
 
-# 애플리케이션 코드 복사 (한 번만)
+# 개발 의존성 포함하여 설치 (애플리케이션 코드 복사 전)
+RUN uv export --with dev > requirements-dev.txt && \
+    uv pip install --system -r requirements-dev.txt
+
+# 애플리케이션 코드 복사 (의존성 설치 후)
 COPY . .
 
 # 소유자 변경
 RUN chown -R appuser:appuser /app
-
-# 개발 스테이지
-FROM app-base as development
-
-# 개발 의존성 포함하여 설치
-RUN uv export --with dev > requirements-dev.txt && \
-    uv pip install --system -r requirements-dev.txt
 
 # 비특권 사용자로 전환
 USER appuser
@@ -39,11 +36,17 @@ EXPOSE 8000 8003
 CMD ["python", "main.py"]
 
 # 운영 스테이지
-FROM app-base as production
+FROM base as production
 
-# 운영 의존성만 설치
+# 운영 의존성만 설치 (애플리케이션 코드 복사 전)
 RUN uv export --no-dev > requirements.txt && \
     uv pip install --system -r requirements.txt
+
+# 애플리케이션 코드 복사 (의존성 설치 후)
+COPY . .
+
+# 소유자 변경
+RUN chown -R appuser:appuser /app
 
 # 비특권 사용자로 전환
 USER appuser

@@ -2,13 +2,13 @@
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Type, Union
 
 from .game_events import GameEvent
 
 logger = logging.getLogger(__name__)
 
-EventHandler = Callable[[GameEvent], Union[None, asyncio.Task[None]]]
+EventHandler = Callable[[GameEvent], Union[None, Coroutine[Any, Any, None]]]
 
 
 class EventBus:
@@ -23,9 +23,7 @@ class EventBus:
 
     def __init__(self) -> None:
         # 이벤트 타입별 핸들러 목록 (우선순위 순서)
-        self._handlers: Dict[
-            Type[GameEvent], List[tuple[int, EventHandler]]
-        ] = {}
+        self._handlers: Dict[Type[GameEvent], List[tuple[int, EventHandler]]] = {}
         # 모든 이벤트에 대한 글로벌 핸들러들
         self._global_handlers: List[tuple[int, EventHandler]] = []
         # 이벤트 타입별 핸들러 수 (디버깅용)
@@ -58,9 +56,7 @@ class EventBus:
             f"(priority: {priority}, total: {self._handler_count[event_type]})"
         )
 
-    def subscribe_global(
-        self, handler: EventHandler, priority: int = 0
-    ) -> None:
+    def subscribe_global(self, handler: EventHandler, priority: int = 0) -> None:
         """모든 이벤트에 대한 글로벌 핸들러 등록
 
         Args:
@@ -72,9 +68,7 @@ class EventBus:
 
         logger.debug(f"Registered global handler (priority: {priority})")
 
-    def unsubscribe(
-        self, event_type: Type[GameEvent], handler: EventHandler
-    ) -> bool:
+    def unsubscribe(self, event_type: Type[GameEvent], handler: EventHandler) -> bool:
         """이벤트 핸들러 등록 해제
 
         Args:
@@ -90,9 +84,7 @@ class EventBus:
         # 핸들러 찾아서 제거
         original_length = len(self._handlers[event_type])
         self._handlers[event_type] = [
-            (priority, h)
-            for priority, h in self._handlers[event_type]
-            if h != handler
+            (priority, h) for priority, h in self._handlers[event_type] if h != handler
         ]
 
         removed = original_length > len(self._handlers[event_type])
@@ -135,9 +127,7 @@ class EventBus:
                 result = handler(event)
                 # 비동기 핸들러인 경우 태스크로 실행
                 if asyncio.iscoroutine(result):
-                    task = asyncio.create_task(
-                        result
-                    )  # type: ignore[unreachable]
+                    task = asyncio.create_task(result)  # type: ignore[unreachable]
                     tasks.append(task)
             except Exception as e:
                 logger.error(
@@ -189,9 +179,7 @@ class EventBus:
         """
         return sum(self._handler_count.values()) + len(self._global_handlers)
 
-    def clear_handlers(
-        self, event_type: Optional[Type[GameEvent]] = None
-    ) -> None:
+    def clear_handlers(self, event_type: Optional[Type[GameEvent]] = None) -> None:
         """핸들러들 제거
 
         Args:
