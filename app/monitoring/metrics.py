@@ -252,7 +252,7 @@ class MetricsCollector:
             return name
 
         # 태그를 정렬하여 일관된 키 생성
-        tag_parts = [f"{k}:{v}" for k, v in sorted(tags.items())]
+        tag_parts = [f"{k}: {v}" for k, v in sorted(tags.items())]
         return f"{name}|{','.join(tag_parts)}"
 
     def _add_time_series_point(
