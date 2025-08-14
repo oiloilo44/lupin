@@ -1,11 +1,12 @@
 import json
-from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import WebSocket
+from datetime import datetime
 
 from .models import MessageType, WebSocketMessage, GameMove, OmokGameState, ChatMessage
 from .room_manager import room_manager
 from .games.omok import OmokGame
+from .session_manager import session_manager
 
 
 class WebSocketHandler:
@@ -17,6 +18,8 @@ class WebSocketHandler:
         
         if message_type == MessageType.JOIN:
             await self._handle_join(websocket, room_id, message)
+        elif message_type == MessageType.RECONNECT:
+            await self._handle_reconnect(websocket, room_id, message)
         elif message_type == MessageType.MOVE:
             await self._handle_move(websocket, room_id, message)
         elif message_type == MessageType.GAME_END:
@@ -38,12 +41,64 @@ class WebSocketHandler:
         if not room:
             return
         
-        player = room.add_player(message["nickname"])
+        session_id = message.get("session_id")
+        nickname = message["nickname"]
+        
+        # 세션이 있으면 해당 세션으로 플레이어 추가
+        if session_id:
+            player = room_manager.add_player_to_room(room_id, nickname, session_id)
+        else:
+            # 세션이 없는 경우에도 session_id를 생성해서 플레이어 추가
+            from .session_manager import session_manager
+            temp_session_id = session_manager.generate_session_id()
+            player = room_manager.add_player_to_room(room_id, nickname, temp_session_id)
+            session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
+        
         if player:
+            # 플레이어 연결 상태 업데이트
+            room_manager.update_player_connection_status(room_id, player.player_number, True)
+            
+            # WebSocket 연결 추가 (세션 ID와 함께)
+            room_manager.add_connection(room_id, websocket, session_id)
+            
             # 두 번째 플레이어 참여 시 색상 배정
             if len(room.players) == 2:
                 room_manager.assign_colors(room)
+            
             await self._broadcast_room_update(room_id, room)
+    
+    async def _handle_reconnect(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
+        """재접속 처리"""
+        session_id = message.get("session_id")
+        if not session_id:
+            await self._send_error(websocket, "세션 정보가 없습니다.")
+            return
+        
+        # 세션으로 플레이어 찾기
+        player, room = room_manager.find_player_by_session(session_id)
+        if not player or not room:
+            await self._send_error(websocket, "재접속할 게임을 찾을 수 없습니다.")
+            return
+        
+        # 다른 방에 접속 시도하는 경우
+        if room.room_id != room_id:
+            await self._send_error(websocket, f"다른 게임 방({room.room_id})에 참여 중입니다.")
+            return
+        
+        # 재접속 처리
+        success = room_manager.handle_reconnection(room_id, session_id, websocket)
+        if not success:
+            await self._send_error(websocket, "재접속에 실패했습니다.")
+            return
+        
+        # 성공적인 재접속 알림
+        await self._send_reconnect_success(websocket, room, player)
+        
+        # 상대방에게 재접속 알림
+        await self._notify_player_reconnected(room_id, player.nickname)
+        
+        # 방 상태 업데이트
+        await self._broadcast_room_update(room_id, room)
     
     async def _handle_move(self, websocket: WebSocket, room_id: str, message: Dict[str, Any]):
         """게임 이동 처리"""
@@ -150,7 +205,7 @@ class WebSocketHandler:
         
         if message["accepted"]:
             # 재시작 승인 - 모든 플레이어에게 알림
-            room_manager.reset_game(room_id)
+            room_manager.reset_omok_game(room_id)
             
             response = WebSocketMessage(
                 type=MessageType.RESTART_ACCEPTED,
@@ -364,6 +419,89 @@ class WebSocketHandler:
                 },
                 "last_move": last_move
             }
+        )
+        await self._broadcast_to_room(room_id, response.to_json())
+    
+    async def _send_error(self, websocket: WebSocket, error_message: str):
+        """에러 메시지 전송"""
+        response = WebSocketMessage(
+            type=MessageType.ERROR,
+            data={"message": error_message}
+        )
+        try:
+            await websocket.send_text(json.dumps(response.to_json()))
+        except:
+            pass
+    
+    async def _send_reconnect_success(self, websocket: WebSocket, room, player):
+        """재접속 성공 메시지 전송"""
+        response = WebSocketMessage(
+            type=MessageType.RECONNECT_SUCCESS,
+            data={
+                "player": {
+                    "nickname": player.nickname,
+                    "player_number": player.player_number,
+                    "color": player.color
+                },
+                "room": {
+                    "game_type": room.game_type.value,
+                    "players": [
+                        {
+                            "nickname": p.nickname, 
+                            "player_number": p.player_number,
+                            "is_connected": p.is_connected,
+                            "color": p.color
+                        }
+                        for p in room.players
+                    ],
+                    "game_state": {
+                        "board": room.game_state["board"],
+                        "currentPlayer": room.game_state["current_player"]
+                    },
+                    "status": room.status.value,
+                    "game_ended": room.game_ended,
+                    "winner": room.winner,
+                    "games_played": room.games_played,
+                    "chat_history": [
+                        {
+                            "nickname": msg.nickname,
+                            "message": msg.message,
+                            "timestamp": msg.timestamp,
+                            "player_number": msg.player_number
+                        } for msg in room.chat_history
+                    ]
+                },
+                "move_history": [
+                    {
+                        "move": {
+                            "x": entry.move.x,
+                            "y": entry.move.y,
+                            "player": entry.move.player
+                        },
+                        "player": entry.player
+                    }
+                    for entry in room.move_history
+                ]
+            }
+        )
+        try:
+            await websocket.send_text(json.dumps(response.to_json()))
+        except:
+            pass
+    
+    async def _notify_player_reconnected(self, room_id: str, nickname: str):
+        """상대방에게 재접속 알림"""
+        response = WebSocketMessage(
+            type=MessageType.PLAYER_RECONNECTED,
+            data={"nickname": nickname}
+        )
+        await self._broadcast_to_room(room_id, response.to_json())
+    
+    async def _notify_player_disconnected(self, room_id: str, nickname: str):
+        """상대방에게 연결 끊김 알림"""
+        response = WebSocketMessage(
+            type=MessageType.PLAYER_DISCONNECTED,
+            data={"nickname": nickname}
         )
         await self._broadcast_to_room(room_id, response.to_json())
     

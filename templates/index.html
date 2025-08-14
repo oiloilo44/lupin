@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="game-menu">
-    <div class="game-card" onclick="location.href='/slither'">
+    <div class="game-card" onclick="showSlitherComingSoon()">
         <h3>🐍 지렁이 게임</h3>
         <p>멀티플레이어 실시간 지렁이 게임<br>여러 명이 함께 플레이</p>
     </div>
@@ -12,7 +12,7 @@
         <p>1:1 대전 오목 게임<br>방을 만들거나 참여하세요</p>
     </div>
     
-    <div class="game-card" onclick="createJanggiRoom()">
+    <div class="game-card" onclick="showJanggiComingSoon()">
         <h3>♞ 장기</h3>
         <p>전통 장기 게임<br>친구와 두뇌 대결</p>
     </div>
@@ -115,29 +115,37 @@ function backToOmokMenu() {
 
 async function createOmokRoom() {
     try {
-        const response = await fetch('/omok/create');
+        const response = await fetch('/omok/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         currentRoomUrl = window.location.origin + data.url;
         currentRoomPath = data.url;
         showRoomCreated(currentRoomUrl);
     } catch (error) {
-        showModal('오류', '방 생성에 실패했습니다.', [
+        console.error('Error creating Omok room:', error);
+        showModal('오류', '방 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', [
             { text: '확인', class: 'primary', onclick: hideModal }
         ]);
     }
 }
 
-async function createJanggiRoom() {
-    try {
-        const response = await fetch('/janggi/create');
-        const data = await response.json();
-        currentRoomUrl = window.location.origin + data.url;
-        showRoomCreated(currentRoomUrl);
-    } catch (error) {
-        showModal('오류', '방 생성에 실패했습니다.', [
-            { text: '확인', class: 'primary', onclick: hideModal }
-        ]);
-    }
+function showJanggiComingSoon() {
+    showModal('🚧 개발 중', '장기 게임은 현재 개발 중입니다.<br><br>전통 장기의 깊이 있는 전략을 온라인으로 즐길 수 있도록 준비 중이니, 조금만 기다려주세요!', [
+        { text: '확인', class: 'primary', onclick: hideModal }
+    ]);
+}
+
+function showSlitherComingSoon() {
+    showModal('🚧 개발 중', '지렁이 게임은 현재 개발 중입니다.<br><br>실시간 멀티플레이어로 여러 명이 함께 즐길 수 있는 지렁이 게임을 준비 중이니, 조금만 기다려주세요!', [
+        { text: '확인', class: 'primary', onclick: hideModal }
+    ]);
 }
 
 function showRoomCreated(url) {

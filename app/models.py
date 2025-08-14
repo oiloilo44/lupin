@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Literal
 from dataclasses import dataclass
 from enum import Enum
+from datetime import datetime
 
 
 class GameType(str, Enum):
@@ -19,6 +20,9 @@ class GameStatus(str, Enum):
 class Player:
     nickname: str
     player_number: int
+    session_id: Optional[str] = None
+    last_seen: Optional[datetime] = None
+    is_connected: bool = True
     color: Optional[int] = None  # 1: 흑돌, 2: 백돌
 
 
@@ -81,6 +85,8 @@ class Room:
     chat_history: List[ChatMessage] = None  # 채팅 히스토리
     
     def __post_init__(self):
+        if self.players is None:
+            self.players = []
         if self.move_history is None:
             self.move_history = []
         if self.undo_requests is None:
@@ -126,6 +132,12 @@ class MessageType(str, Enum):
     RESTART_RESPONSE = "restart_response"
     UNDO_REQUEST = "undo_request"
     UNDO_RESPONSE = "undo_response"
+    
+    # 재접속 관련
+    RECONNECT = "reconnect"
+    RECONNECT_SUCCESS = "reconnect_success"
+    PLAYER_RECONNECTED = "player_reconnected"
+    PLAYER_DISCONNECTED = "player_disconnected"
     
     # 상태 업데이트
     ROOM_UPDATE = "room_update"
