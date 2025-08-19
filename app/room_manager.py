@@ -17,7 +17,9 @@ class RoomManager:
         self.rooms: Dict[str, Room] = {}
         self.connections: Dict[str, Set[WebSocket]] = {}
         self.websocket_sessions: Dict[WebSocket, str] = {}  # WebSocket -> session_id 매핑
+        self.session_to_room: Dict[str, str] = {}  # session_id -> room_id 매핑 (성능 최적화)
         self.room_timers: Dict[str, asyncio.Task] = {}  # 방 정리 타이머
+        self._timer_locks: Dict[str, asyncio.Lock] = {}  # 타이머 관리용 Lock
 
         # 게임별 매니저 인스턴스
         self.omok_manager = OmokManager()
@@ -69,13 +71,16 @@ class RoomManager:
         if websocket in self.websocket_sessions:
             del self.websocket_sessions[websocket]
 
-        # 세션 ID가 있으면 플레이어 연결 상태 업데이트
-        if disconnected_session_id:
+        # 세션 ID가 있고 room이 존재하면 플레이어 연결 상태 업데이트
+        room = self.rooms.get(room_id)
+        if disconnected_session_id and room:
             self.update_player_connection_status(
                 room_id, disconnected_session_id, False
             )
+            # session_to_room 매핑에서도 제거
+            if disconnected_session_id in self.session_to_room:
+                del self.session_to_room[disconnected_session_id]
 
-        room = self.rooms.get(room_id)
         if not room:
             return
 
@@ -83,14 +88,11 @@ class RoomManager:
         if room_id in self.connections and not self.connections[room_id]:
             # 게임이 진행 중이거나 대기 중인 경우 30분 대기 후 삭제
             if room.status in [GameStatus.PLAYING, GameStatus.WAITING] and room.players:
-                # 기존 타이머가 있으면 취소
-                if room_id in self.room_timers:
-                    self.room_timers[room_id].cancel()
+                # Lock을 사용하여 race condition 방지
+                if room_id not in self._timer_locks:
+                    self._timer_locks[room_id] = asyncio.Lock()
 
-                # 새 타이머 시작
-                self.room_timers[room_id] = asyncio.create_task(
-                    self._cleanup_room_after_delay(room_id, 30)
-                )
+                asyncio.create_task(self._schedule_room_cleanup(room_id, 30))
             else:
                 # 게임이 끝났거나 플레이어가 없으면 즉시 삭제
                 if room_id in self.rooms:
@@ -103,10 +105,22 @@ class RoomManager:
         return self.connections.get(room_id, set())
 
     def find_player_by_session(self, session_id: str) -> Optional[tuple[Player, Room]]:
-        """세션 ID로 플레이어 찾기"""
+        """세션 ID로 플레이어 찾기 (O(1) 성능)"""
+        # 먼저 session_to_room 매핑으로 빠르게 조회
+        room_id = self.session_to_room.get(session_id)
+        if room_id:
+            room = self.rooms.get(room_id)
+            if room:
+                for player in room.players:
+                    if player.session_id == session_id:
+                        return player, room
+
+        # 매핑이 없으면 전체 탐색 (failsafe)
         for room_id, room in self.rooms.items():
             for player in room.players:
                 if player.session_id == session_id:
+                    # 찾았으면 매핑 업데이트
+                    self.session_to_room[session_id] = room_id
                     return player, room
         return None
 
@@ -150,6 +164,18 @@ class RoomManager:
                 player.last_seen = datetime.now()
                 break
 
+    async def _schedule_room_cleanup(self, room_id: str, delay_minutes: int = 30):
+        """Lock을 사용한 안전한 타이머 스케줄링"""
+        async with self._timer_locks[room_id]:
+            # 기존 타이머가 있으면 취소
+            if room_id in self.room_timers:
+                self.room_timers[room_id].cancel()
+
+            # 새 타이머 시작
+            self.room_timers[room_id] = asyncio.create_task(
+                self._cleanup_room_after_delay(room_id, delay_minutes)
+            )
+
     async def _cleanup_room_after_delay(self, room_id: str, delay_minutes: int = 30):
         """지연 후 방 정리"""
         await asyncio.sleep(delay_minutes * 60)  # 분을 초로 변환
@@ -170,9 +196,11 @@ class RoomManager:
             del self.rooms[room_id]
             del self.connections[room_id]
 
-        # 타이머 정리
+        # 타이머와 Lock 정리
         if room_id in self.room_timers:
             del self.room_timers[room_id]
+        if room_id in self._timer_locks:
+            del self._timer_locks[room_id]
 
     def handle_reconnection(self, room_id: str, session_id: str, websocket: WebSocket):
         """재접속 처리"""
@@ -240,6 +268,9 @@ class RoomManager:
         )
         room.players.append(player)
 
+        # session_to_room 매핑 추가
+        self.session_to_room[session_id] = room_id
+
         if len(room.players) == 2:
             room.status = GameStatus.PLAYING
             # 두 번째 플레이어 참여 시 색상 배정
@@ -294,6 +325,12 @@ class RoomManager:
             if room_id in self.room_timers:
                 self.room_timers[room_id].cancel()
                 del self.room_timers[room_id]
+            if room_id in self._timer_locks:
+                del self._timer_locks[room_id]
+            # session_to_room 매핑 정리
+            for player in room.players:
+                if player.session_id in self.session_to_room:
+                    del self.session_to_room[player.session_id]
 
     def reset_omok_game(self, room_id: str):
         """오목 게임 재시작"""

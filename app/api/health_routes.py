@@ -42,24 +42,28 @@ async def liveness_probe() -> Dict[str, str]:
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 
+def _validate_service_readiness() -> Dict[str, bool]:
+    """서비스 준비 상태를 검증하는 재사용 가능한 메서드."""
+    return {
+        "session_manager": (
+            session_manager is not None
+            and hasattr(session_manager, "sessions")
+            and isinstance(session_manager.sessions, dict)
+            and hasattr(session_manager, "create_session")
+            and hasattr(session_manager, "get_session_data")
+        ),
+        "room_manager": room_manager is not None,
+        "metrics_collector": metrics_collector is not None,
+        "performance_monitor": performance_monitor is not None,
+    }
+
+
 @router.get("/ready")
 async def readiness_probe() -> Dict[str, Any]:
     """레디니스 프로브 - 애플리케이션이 트래픽을 받을 준비가 되었는지 확인."""
     try:
         # 서비스 준비 상태 확인
-        checks = {
-            "session_manager": (
-                session_manager is not None
-                and hasattr(session_manager, "sessions")
-                and isinstance(session_manager.sessions, dict)
-                and hasattr(session_manager, "create_session")
-                and hasattr(session_manager, "get_session_data")
-            ),
-            "room_manager": room_manager is not None,
-            "metrics_collector": metrics_collector is not None,
-            "performance_monitor": performance_monitor is not None,
-        }
-
+        checks = _validate_service_readiness()
         all_ready = all(checks.values())
 
         if all_ready:

@@ -52,8 +52,8 @@ class WebSocketHandler:
         if session_id:
             player = room_manager.add_player_to_room(room_id, nickname, session_id)
         else:
-            # 세션이 없는 경우에도 session_id를 생성해서 플레이어 추가
-            temp_session_id = session_manager.generate_session_id()
+            # 세션이 없는 경우에도 유일성이 보장된 session_id를 생성해서 플레이어 추가
+            temp_session_id = session_manager.generate_unique_session_id()
             player = room_manager.add_player_to_room(room_id, nickname, temp_session_id)
             session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
 

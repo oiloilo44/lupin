@@ -158,8 +158,8 @@ class ConfigLoader:
         self, config: Dict[str, Any], config_name: str
     ) -> Dict[str, Any]:
         """런타임 오버라이드를 설정에 적용합니다."""
-        # 런타임 오버라이드 매니저가 이미 초기화되어 있는지 확인
-        if hasattr(self, "_runtime_manager"):
+        # 런타임 오버라이드 매니저가 이미 초기화되어 있고 None이 아닌지 확인
+        if hasattr(self, "_runtime_manager") and self._runtime_manager is not None:
             return self._runtime_manager.apply_overrides_to_config(config, config_name)
         return config
 

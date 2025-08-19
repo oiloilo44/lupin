@@ -20,6 +20,16 @@ class SessionManager:
         """새로운 세션 ID 생성."""
         return str(uuid.uuid4())
 
+    def generate_unique_session_id(self) -> str:
+        """유일성이 보장된 새로운 세션 ID 생성."""
+        max_attempts = 10
+        for _ in range(max_attempts):
+            session_id = str(uuid.uuid4())
+            if session_id not in self.sessions:
+                return session_id
+        # 매우 드문 경우지만 10번 시도해도 중복이면 예외 발생
+        raise ValueError("유일한 세션 ID를 생성할 수 없습니다.")
+
     def create_session(
         self, response: Response, player_data: Optional[Dict] = None
     ) -> str:
