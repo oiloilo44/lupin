@@ -1,17 +1,10 @@
 import json
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import WebSocket
 
-from .games.omok import OmokGame
-from .models import (
-    ChatMessage,
-    GameMove,
-    MessageType,
-    OmokGameState,
-    WebSocketMessage,
-)
+from .models import ChatMessage, GameType, MessageType, OmokGameState, WebSocketMessage
 from .room_manager import room_manager
 from .session_manager import session_manager
 
@@ -57,15 +50,11 @@ class WebSocketHandler:
 
         # 세션이 있으면 해당 세션으로 플레이어 추가
         if session_id:
-            player = room_manager.add_player_to_room(
-                room_id, nickname, session_id
-            )
+            player = room_manager.add_player_to_room(room_id, nickname, session_id)
         else:
-            # 세션이 없는 경우에도 session_id를 생성해서 플레이어 추가
-            temp_session_id = session_manager.generate_session_id()
-            player = room_manager.add_player_to_room(
-                room_id, nickname, temp_session_id
-            )
+            # 세션이 없는 경우에도 유일성이 보장된 session_id를 생성해서 플레이어 추가
+            temp_session_id = session_manager.generate_unique_session_id()
+            player = room_manager.add_player_to_room(room_id, nickname, temp_session_id)
             session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
 
         if player:
@@ -76,10 +65,6 @@ class WebSocketHandler:
 
             # WebSocket 연결 추가 (세션 ID와 함께)
             room_manager.add_connection(room_id, websocket, session_id)
-
-            # 두 번째 플레이어 참여 시 색상 배정
-            if len(room.players) == 2:
-                room_manager.assign_colors(room)
 
             await self._broadcast_room_update(room_id, room)
 
@@ -105,15 +90,11 @@ class WebSocketHandler:
 
         # 다른 방에 접속 시도하는 경우
         if room.room_id != room_id:
-            await self._send_error(
-                websocket, f"다른 게임 방({room.room_id})에 참여 중입니다."
-            )
+            await self._send_error(websocket, f"다른 게임 방({room.room_id})에 참여 중입니다.")
             return
 
         # 재접속 처리
-        success = room_manager.handle_reconnection(
-            room_id, session_id, websocket
-        )
+        success = room_manager.handle_reconnection(room_id, session_id, websocket)
         if not success:
             await self._send_error(websocket, "재접속에 실패했습니다.")
             return
@@ -135,65 +116,132 @@ class WebSocketHandler:
         if not room:
             return
 
-        # 이동 기록 저장
-        if "last_move" in message:
-            move = GameMove(
-                x=message["last_move"]["x"],
-                y=message["last_move"]["y"],
-                player=room.game_state["current_player"],
-            )
+        # 세션 ID로 플레이어 찾기
+        session_id = room_manager.get_session_id_by_websocket(websocket)
+        if not session_id:
+            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
+            return
 
-            history_entry = OmokGame.create_move_history_entry(
-                move=move,
-                board_state=room.game_state["board"],
-                player=room.game_state["current_player"],
-            )
-            room.move_history.append(history_entry)
+        # 게임별 매니저로 이동 처리
+        if room.game_type == GameType.OMOK:
+            await self._handle_omok_move(websocket, room_id, message, session_id)
+        # 추후 다른 게임 타입 추가 가능
 
-        # 게임 상태 업데이트
-        client_game_state = message["game_state"]
-        room.game_state = {
-            "board": client_game_state["board"],
-            "current_player": client_game_state["currentPlayer"],
-        }
-
-        await self._broadcast_game_update(
-            room_id, room.game_state, message.get("last_move")
-        )
-
-    async def _handle_game_end(
-        self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
+    async def _handle_omok_move(
+        self,
+        websocket: WebSocket,
+        room_id: str,
+        message: Dict[str, Any],
+        session_id: str,
     ):
-        """게임 종료 처리."""
+        """오목 이동 처리."""
         room = room_manager.get_room(room_id)
         if not room:
             return
 
-        room.game_ended = True
-        room.winner = message["winner"]
-        room.last_winner = message["winner"]  # 다음 게임 색상 배정을 위해 저장
+        omok_manager = room_manager.get_game_manager(GameType.OMOK)
+        player = omok_manager.find_player_by_session(room, session_id)
+        if not player:
+            await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다.")
+            return
 
-        # 게임 상태 업데이트
-        client_game_state = message["game_state"]
-        room.game_state = {
-            "board": client_game_state["board"],
-            "current_player": client_game_state["currentPlayer"],
-        }
+        # 마지막 이동이 있는 경우에만 처리
+        if "last_move" not in message:
+            return
 
+        last_move = message["last_move"]
+        x, y = last_move["x"], last_move["y"]
+
+        # 게임 매니저를 통한 이동 검증 및 실행
+        success, winning_line, error_msg = omok_manager.make_move(room, player, x, y)
+
+        if not success:
+            await self._send_error(websocket, error_msg)
+            return
+
+        # 승리 조건 확인
+        if winning_line:
+            # 게임 종료 처리
+            await self._broadcast_game_end(room_id, room, last_move, winning_line)
+        else:
+            # 일반 이동 업데이트
+            await self._broadcast_game_update(room_id, room.game_state, last_move)
+
+    async def _broadcast_game_end(
+        self,
+        room_id: str,
+        room: Any,
+        last_move: Dict[str, Any],
+        winning_line: List[int],
+    ):
+        """게임 종료 브로드캐스트."""
         response = WebSocketMessage(
             type=MessageType.GAME_END,
             data={
-                "winner": message["winner"],
+                "winner": room.winner,
                 "game_state": {
                     "board": room.game_state["board"],
                     "currentPlayer": room.game_state["current_player"],
                 },
-                "last_move": message.get("last_move"),
-                "winning_line": message.get("winning_line"),
+                "last_move": last_move,
+                "winning_line": winning_line,
             },
         )
-
         await self._broadcast_to_room(room_id, response.to_json())
+
+    async def _handle_omok_undo(self, room_id: str, room):
+        """오목 무르기 처리."""
+        from .games.omok import OmokGame  # 지역 import로 순환 참조 방지
+
+        game_state = OmokGameState(
+            board=room.game_state["board"],
+            current_player=room.game_state["current_player"],
+        )
+
+        if OmokGame.undo_last_move(game_state, room.move_history):
+            room.game_state = {
+                "board": game_state.board,
+                "current_player": game_state.current_player,
+            }
+
+            response = WebSocketMessage(
+                type=MessageType.UNDO_ACCEPTED,
+                data={
+                    "game_state": {
+                        "board": room.game_state["board"],
+                        "currentPlayer": room.game_state["current_player"],
+                    }
+                },
+            )
+            await self._broadcast_to_room(room_id, response.to_json())
+        else:
+            # 무르기 실패 - 요청자에게만 알림
+            requester_ws = room.undo_requests.get("requester_websocket")
+            if requester_ws:
+                response = WebSocketMessage(type=MessageType.UNDO_REJECTED, data={})
+                try:
+                    await requester_ws.send_text(json.dumps(response.to_json()))
+                except Exception:
+                    pass
+
+    async def _handle_game_end(
+        self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
+    ):
+        """게임 종료 처리 (클라이언트 직접 알림용 - 보안상 권장하지 않음)."""
+        # 이 메서드는 하위 호환성을 위해 유지하지만,
+        # 실제로는 _handle_move에서 게임 매니저를 통해 승리 조건을 검증해야 함
+        room = room_manager.get_room(room_id)
+        if not room:
+            return
+
+        # 이미 게임이 종료된 경우에만 브로드캐스트
+        if room.game_ended:
+            await self._broadcast_game_end(
+                room_id,
+                room,
+                message.get("last_move", {}),
+                message.get("winning_line", []),
+            )
 
     async def _handle_restart_request(
         self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
@@ -274,9 +322,7 @@ class WebSocketHandler:
             for ws in connections:
                 if ws != websocket:  # 거부한 사람은 제외
                     try:
-                        await ws.send_text(
-                            json.dumps(rejection_response.to_json())
-                        )
+                        await ws.send_text(json.dumps(rejection_response.to_json()))
                     except Exception:
                         # 연결이 끊어진 경우 무시
                         pass
@@ -331,52 +377,17 @@ class WebSocketHandler:
             return
 
         if message["accepted"] and len(room.move_history) > 0:
-            # 무르기 승인 - 모든 플레이어에게 알림
-            game_state = OmokGameState(
-                board=room.game_state["board"],
-                current_player=room.game_state["current_player"],
-            )
-
-            if OmokGame.undo_last_move(game_state, room.move_history):
-                room.game_state = {
-                    "board": game_state.board,
-                    "current_player": game_state.current_player,
-                }
-
-                response = WebSocketMessage(
-                    type=MessageType.UNDO_ACCEPTED,
-                    data={
-                        "game_state": {
-                            "board": room.game_state["board"],
-                            "currentPlayer": room.game_state["current_player"],
-                        }
-                    },
-                )
-                await self._broadcast_to_room(room_id, response.to_json())
-            else:
-                # 무르기 실패 - 요청자에게만 알림
-                requester_ws = room.undo_requests.get("requester_websocket")
-                if requester_ws:
-                    response = WebSocketMessage(
-                        type=MessageType.UNDO_REJECTED, data={}
-                    )
-                    try:
-                        await requester_ws.send_text(
-                            json.dumps(response.to_json())
-                        )
-                    except Exception:
-                        pass
+            # 게임별 무르기 처리
+            if room.game_type == GameType.OMOK:
+                await self._handle_omok_undo(room_id, room)
+            # 추후 다른 게임 타입 추가 가능
         else:
             # 무르기 거부 - 요청자에게만 알림
             requester_ws = room.undo_requests.get("requester_websocket")
             if requester_ws:
-                response = WebSocketMessage(
-                    type=MessageType.UNDO_REJECTED, data={}
-                )
+                response = WebSocketMessage(type=MessageType.UNDO_REJECTED, data={})
                 try:
-                    await requester_ws.send_text(
-                        json.dumps(response.to_json())
-                    )
+                    await requester_ws.send_text(json.dumps(response.to_json()))
                 except Exception:
                     # 연결이 끊어진 경우 무시
                     pass
@@ -489,9 +500,7 @@ class WebSocketHandler:
         except Exception:
             pass
 
-    async def _send_reconnect_success(
-        self, websocket: WebSocket, room, player
-    ):
+    async def _send_reconnect_success(self, websocket: WebSocket, room, player):
         """재접속 성공 메시지 전송."""
         response = WebSocketMessage(
             type=MessageType.RECONNECT_SUCCESS,

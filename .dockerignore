@@ -33,6 +33,7 @@ Thumbs.db
 # Docker (빌드 컨텍스트에서 제외)
 docker-compose*.yml
 .dockerignore
+Dockerfile
 
 # Documentation (컨테이너에 불필요)
 README*.md

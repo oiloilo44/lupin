@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from ..monitoring.metrics import get_metrics_collector
 from ..monitoring.performance import get_performance_monitor
 from ..room_manager import room_manager
-from ..session_manager import SessionManager, session_manager
+from ..session_manager import session_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -42,24 +42,28 @@ async def liveness_probe() -> Dict[str, str]:
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 
+def _validate_service_readiness() -> Dict[str, bool]:
+    """서비스 준비 상태를 검증하는 재사용 가능한 메서드."""
+    return {
+        "session_manager": (
+            session_manager is not None
+            and hasattr(session_manager, "sessions")
+            and isinstance(session_manager.sessions, dict)
+            and hasattr(session_manager, "create_session")
+            and hasattr(session_manager, "get_session_data")
+        ),
+        "room_manager": room_manager is not None,
+        "metrics_collector": metrics_collector is not None,
+        "performance_monitor": performance_monitor is not None,
+    }
+
+
 @router.get("/ready")
 async def readiness_probe() -> Dict[str, Any]:
     """레디니스 프로브 - 애플리케이션이 트래픽을 받을 준비가 되었는지 확인."""
     try:
         # 서비스 준비 상태 확인
-        checks = {
-            "session_manager": (
-                session_manager is not None
-                and hasattr(session_manager, "sessions")
-                and isinstance(session_manager.sessions, dict)
-                and hasattr(session_manager, "create_session")
-                and hasattr(session_manager, "get_session_data")
-            ),
-            "room_manager": room_manager is not None,
-            "metrics_collector": metrics_collector is not None,
-            "performance_monitor": performance_monitor is not None,
-        }
-
+        checks = _validate_service_readiness()
         all_ready = all(checks.values())
 
         if all_ready:
@@ -93,10 +97,7 @@ async def detailed_health() -> Dict[str, Any]:
     """상세 헬스체크 - 모니터링 대시보드용."""
     try:
         # 세션 통계
-        session_manager_instance = SessionManager()
-        sessions = getattr(
-            session_manager_instance, "sessions", {}
-        )  # sessions 속성 사용
+        sessions = session_manager.sessions
         session_stats = {
             "total_sessions": len(sessions),
             "active_sessions": sum(
@@ -111,9 +112,7 @@ async def detailed_health() -> Dict[str, Any]:
         room_stats = {
             "total_rooms": len(room_manager.rooms),
             "active_games": sum(
-                1
-                for room in room_manager.rooms.values()
-                if len(room.players) == 2
+                1 for room in room_manager.rooms.values() if len(room.players) == 2
             ),
         }
 
@@ -131,9 +130,7 @@ async def detailed_health() -> Dict[str, Any]:
         ws_stats = cast(
             Dict[str, Any],
             (
-                getattr(
-                    performance_monitor, "get_connection_metrics", lambda: {}
-                )()
+                getattr(performance_monitor, "get_connection_metrics", lambda: {})()
                 if performance_monitor
                 else {}
             ),

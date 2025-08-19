@@ -1,14 +1,14 @@
 """게임 이벤트 정의."""
 
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from ..models import GameType, Player, Room
 
 
-@dataclass
+@dataclass(kw_only=True)
 class GameEvent(ABC):
     """게임 이벤트 기본 클래스
 
@@ -16,11 +16,7 @@ class GameEvent(ABC):
     """
 
     room_id: str
-    timestamp: datetime
-
-    def __post_init__(self) -> None:
-        if not self.timestamp:
-            self.timestamp = datetime.now()
+    timestamp: datetime = field(default_factory=datetime.now)
 
 
 # =========================
@@ -208,7 +204,6 @@ class RoomCreatedEvent(GameEvent):
 class RoomDeletedEvent(GameEvent):
     """방이 삭제되었을 때 발생하는 이벤트"""
 
-    room_id: str
     reason: str = "empty"  # empty, expired, manual
     final_room_state: Optional[Dict[str, Any]] = None
 

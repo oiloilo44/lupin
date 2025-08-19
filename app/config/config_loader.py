@@ -35,9 +35,7 @@ class ConfigLoader:
         if not self.config_dir.exists():
             raise ConfigurationError(f"설정 디렉토리를 찾을 수 없습니다: {self.config_dir}")
 
-    def load_config(
-        self, config_name: str, use_cache: bool = True
-    ) -> Dict[str, Any]:
+    def load_config(self, config_name: str, use_cache: bool = True) -> Dict[str, Any]:
         """
         설정 파일을 로드합니다.
 
@@ -79,9 +77,7 @@ class ConfigLoader:
         # 3. 특정 설정 파일 로드 및 병합 (게임별 설정 등)
         if config_name != "default" and config_name != self._environment:
             # games/ 디렉토리에서 먼저 찾기
-            game_config_path = (
-                self.config_dir / "games" / f"{config_name}.yaml"
-            )
+            game_config_path = self.config_dir / "games" / f"{config_name}.yaml"
             if game_config_path.exists():
                 game_config = self._load_yaml_file(f"games/{config_name}.yaml")
                 base_config = self._deep_merge(base_config, game_config)
@@ -91,9 +87,7 @@ class ConfigLoader:
                 config_path = self.config_dir / config_file
                 if config_path.exists():
                     specific_config = self._load_yaml_file(config_file)
-                    base_config = self._deep_merge(
-                        base_config, specific_config
-                    )
+                    base_config = self._deep_merge(base_config, specific_config)
 
         return base_config
 
@@ -106,9 +100,12 @@ class ConfigLoader:
                 content = yaml.safe_load(f)
                 if content is None:
                     return {}
-                if isinstance(content, dict):
-                    return content
-                return {}
+                if not isinstance(content, dict):
+                    raise ConfigurationError(
+                        f"설정 파일 내용이 딕셔너리가 아닙니다: {file_path}. "
+                        f"YAML 파일은 키-값 쌍을 포함해야 합니다."
+                    )
+                return content
         except FileNotFoundError:
             raise ConfigurationError(f"설정 파일을 찾을 수 없습니다: {file_path}")
         except yaml.YAMLError as e:
@@ -161,11 +158,9 @@ class ConfigLoader:
         self, config: Dict[str, Any], config_name: str
     ) -> Dict[str, Any]:
         """런타임 오버라이드를 설정에 적용합니다."""
-        # 런타임 오버라이드 매니저가 이미 초기화되어 있는지 확인
-        if hasattr(self, "_runtime_manager"):
-            return self._runtime_manager.apply_overrides_to_config(
-                config, config_name
-            )
+        # 런타임 오버라이드 매니저가 이미 초기화되어 있고 None이 아닌지 확인
+        if hasattr(self, "_runtime_manager") and self._runtime_manager is not None:
+            return self._runtime_manager.apply_overrides_to_config(config, config_name)
         return config
 
     def set_runtime_manager(self, runtime_manager: Any) -> None:
