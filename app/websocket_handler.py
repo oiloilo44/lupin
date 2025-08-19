@@ -145,12 +145,13 @@ class WebSocketHandler:
             await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다.")
             return
 
-        # 마지막 이동이 있는 경우에만 처리
-        if "last_move" not in message:
+        # 클라이언트는 move: {x, y} 형식으로 보냄
+        if "move" not in message:
+            await self._send_error(websocket, "이동 정보가 없습니다.")
             return
 
-        last_move = message["last_move"]
-        x, y = last_move["x"], last_move["y"]
+        move = message["move"]
+        x, y = move["x"], move["y"]
 
         # 게임 매니저를 통한 이동 검증 및 실행
         success, winning_line, error_msg = omok_manager.make_move(room, player, x, y)
@@ -162,10 +163,14 @@ class WebSocketHandler:
         # 승리 조건 확인
         if winning_line:
             # 게임 종료 처리
-            await self._broadcast_game_end(room_id, room, last_move, winning_line)
+            await self._broadcast_game_end(
+                room_id, room, {"x": x, "y": y}, winning_line
+            )
         else:
             # 일반 이동 업데이트
-            await self._broadcast_game_update(room_id, room.game_state, last_move)
+            await self._broadcast_game_update(
+                room_id, room.game_state, {"x": x, "y": y}
+            )
 
     async def _broadcast_game_end(
         self,
@@ -181,7 +186,7 @@ class WebSocketHandler:
                 "winner": room.winner,
                 "game_state": {
                     "board": room.game_state["board"],
-                    "currentPlayer": room.game_state["current_player"],
+                    "current_player": room.game_state["current_player"],
                 },
                 "last_move": last_move,
                 "winning_line": winning_line,
@@ -209,7 +214,7 @@ class WebSocketHandler:
                 data={
                     "game_state": {
                         "board": room.game_state["board"],
-                        "currentPlayer": room.game_state["current_player"],
+                        "current_player": room.game_state["current_player"],
                     }
                 },
             )
@@ -297,7 +302,7 @@ class WebSocketHandler:
                 data={
                     "game_state": {
                         "board": room.game_state["board"],
-                        "currentPlayer": room.game_state["current_player"],
+                        "current_player": room.game_state["current_player"],
                     },
                     "players": [
                         {
@@ -483,7 +488,7 @@ class WebSocketHandler:
             data={
                 "game_state": {
                     "board": game_state["board"],
-                    "currentPlayer": game_state["current_player"],
+                    "current_player": game_state["current_player"],
                 },
                 "last_move": last_move,
             },
@@ -523,7 +528,7 @@ class WebSocketHandler:
                     ],
                     "game_state": {
                         "board": room.game_state["board"],
-                        "currentPlayer": room.game_state["current_player"],
+                        "current_player": room.game_state["current_player"],
                     },
                     "status": room.status.value,
                     "game_ended": room.game_ended,

@@ -54,10 +54,13 @@ class GameChat {
         }
 
         // 서버에서 세션 기반으로 발신자를 인증하므로 nickname 전송 불필요
-        this.websocket.send(JSON.stringify({
-            type: 'chat_message',
+        const messageData = {
+            type: 'chatMessage',
             message: message
-        }));
+        };
+
+        // humps를 사용하여 snake_case로 변환
+        this.websocket.send(JSON.stringify(humps.decamelizeKeys(messageData)));
 
         chatInput.value = '';
     }
@@ -65,7 +68,7 @@ class GameChat {
     /**
      * 채팅 메시지 표시
      */
-    displayMessage(nickname, message, timestamp, player_number) {
+    displayMessage(nickname, message, timestamp, playerNumber) {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (!chatMessages) return;
 
@@ -106,7 +109,7 @@ class GameChat {
         chatMessages.innerHTML = '';
         if (chatHistory && chatHistory.length > 0) {
             chatHistory.forEach(msg => {
-                this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
+                this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.playerNumber);
             });
         } else {
             // 채팅 히스토리가 없으면 빈 메시지 표시
@@ -152,10 +155,10 @@ class GameChat {
      * WebSocket 메시지 처리 (게임에서 호출)
      */
     handleWebSocketMessage(data) {
-        if (data.type === 'chat_broadcast') {
-            this.displayMessage(data.nickname, data.message, data.timestamp, data.player_number);
-        } else if (data.type === 'room_update' && data.room.chat_history) {
-            this.loadHistory(data.room.chat_history);
+        if (data.type === 'chatBroadcast') {
+            this.displayMessage(data.nickname, data.message, data.timestamp, data.playerNumber);
+        } else if (data.type === 'roomUpdate' && data.room.chatHistory) {
+            this.loadHistory(data.room.chatHistory);
         }
     }
 }
@@ -175,9 +178,9 @@ function sendChatMessage() {
     }
 }
 
-function displayChatMessage(nickname, message, timestamp, player_number) {
+function displayChatMessage(nickname, message, timestamp, playerNumber) {
     if (window.gameChat) {
-        window.gameChat.displayMessage(nickname, message, timestamp, player_number);
+        window.gameChat.displayMessage(nickname, message, timestamp, playerNumber);
     }
 }
 

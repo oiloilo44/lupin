@@ -128,21 +128,24 @@ button:disabled:hover {
 {{ chat_init_script() }}
 <script src="/static/js/omok.js"></script>
 <script>
-// 서버에서 전달된 동적 데이터
+// 서버에서 전달된 동적 데이터 (snake_case)
 window.omokGameConfig = {
-    roomId: '{{ room_id }}',
-    sessionId: '{{ session_id }}',
-    gameState: {{ game_state | tojson | safe }},
-    playerData: {{ player_data | tojson | safe }}
+    room_id: '{{ room_id }}',
+    session_id: '{{ session_id }}',
+    game_state: {{ game_state | tojson | safe }},
+    player_data: {{ player_data | tojson | safe }}
 };
 
 // OmokGameClient 인스턴스 생성 및 초기화
 document.addEventListener('DOMContentLoaded', function() {
+    // 서버 데이터를 camelCase로 변환
+    const config = humps.camelizeKeys(window.omokGameConfig);
+
     window.omokClient = new OmokGameClient(
-        window.omokGameConfig.roomId,
-        window.omokGameConfig.sessionId,
-        window.omokGameConfig.gameState,
-        window.omokGameConfig.playerData
+        config.roomId,
+        config.sessionId,
+        config.gameState,
+        config.playerData
     );
     window.omokClient.initialize();
 });
