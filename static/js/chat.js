@@ -68,21 +68,12 @@ class GameChat {
     displayMessage(nickname, message, timestamp, player_number) {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (!chatMessages) return;
-<<<<<<< HEAD
 
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         // 빈 메시지 제거
         const emptyMessage = chatMessages.querySelector('.chat-empty');
         if (emptyMessage) {
             emptyMessage.remove();
         }
-<<<<<<< HEAD
-
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
 
@@ -113,11 +104,6 @@ class GameChat {
         if (!chatMessages) return;
 
         chatMessages.innerHTML = '';
-<<<<<<< HEAD
-
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         if (chatHistory && chatHistory.length > 0) {
             chatHistory.forEach(msg => {
                 this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);

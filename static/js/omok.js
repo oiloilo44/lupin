@@ -27,7 +27,11 @@ class OmokGameClient {
             gameStats: { moves: 0, startTime: null },
             waitingForUndo: false,
             winnerNumber: null,
-            myNickname: playerData ? playerData.nickname : null
+            myNickname: playerData ? playerData.nickname : null,
+            // 모바일 터치 미리보기 시스템
+            previewStone: null,  // {x, y, color}
+            isDragging: false,
+            showingConfirmButtons: false
         };
 
         // 연결 상태
@@ -80,6 +84,17 @@ class OmokGameClient {
         // 터치 위치 추적용 변수
         this.touchStartPos = null;
         this.touchStartTime = null;
+
+        // 모바일 확정 버튼 이벤트
+        const confirmButton = document.getElementById('confirmMoveButton');
+        const cancelButton = document.getElementById('cancelMoveButton');
+
+        if (confirmButton) {
+            confirmButton.addEventListener('click', () => this.confirmMove());
+        }
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => this.cancelMove());
+        }
     }
 
     // HTML 이스케이프 함수 (XSS 방지)
@@ -234,10 +249,26 @@ class OmokGameClient {
             this.ctx.fill();
         });
 
-        // 마우스 오버 미리보기
+        // 모바일 터치 미리보기 돌
+        if (this.state.previewStone) {
+            const px = this.state.previewStone.x;
+            const py = this.state.previewStone.y;
+            if (px >= 0 && px < 15 && py >= 0 && py < 15 && this.state.gameState.board[py][px] === 0) {
+                const stoneRadius = Math.max(8, cellSize * 0.4);
+                this.ctx.beginPath();
+                this.ctx.arc(margin + px * cellSize, margin + py * cellSize, stoneRadius, 0, 2 * Math.PI);
+                this.ctx.fillStyle = this.state.previewStone.color === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)';
+                this.ctx.fill();
+                this.ctx.strokeStyle = this.state.previewStone.color === 1 ? 'rgba(0, 0, 0, 0.7)' : 'rgba(51, 51, 51, 0.7)';
+                this.ctx.lineWidth = Math.max(2, cellSize / 20);
+                this.ctx.stroke();
+            }
+        }
+
+        // 마우스 오버 미리보기 (데스크톱용)
         const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (this.state.hoverPosition && !this.state.gameEnded && this.state.players.length === 2 &&
-            myPlayer && this.state.gameState.current_player === myPlayer.color) {
+            myPlayer && this.state.gameState.current_player === myPlayer.color && !this.state.previewStone) {
             const [hx, hy] = this.state.hoverPosition;
             if (this.state.gameState.board[hy][hx] === 0) {
                 const stoneRadius = Math.max(8, cellSize * 0.4);
@@ -356,13 +387,29 @@ class OmokGameClient {
         const touch = e.touches[0];
         this.touchStartPos = this.getEventPosition(touch);
         this.touchStartTime = Date.now();
+        this.state.isDragging = false;
     }
 
     // 터치 이동 처리
     handleTouchMove(e) {
         e.preventDefault();
         if (e.touches.length === 1) {
-            this.handleHover(e.touches[0]);
+            const touch = e.touches[0];
+            const currentPos = this.getEventPosition(touch);
+
+            // 미리보기 돌이 있는 경우 드래그로 위치 조정
+            if (this.state.previewStone && this.touchStartPos) {
+                const dragDistance = Math.abs(currentPos.x - this.touchStartPos.x) +
+                                   Math.abs(currentPos.y - this.touchStartPos.y);
+
+                if (dragDistance > 0) {
+                    this.state.isDragging = true;
+                    this.updatePreviewStone(currentPos.x, currentPos.y);
+                }
+            } else {
+                // 일반 호버 효과 (데스크톱 호환)
+                this.handleHover(touch);
+            }
         }
     }
 
@@ -370,25 +417,33 @@ class OmokGameClient {
     handleTouchEnd(e) {
         e.preventDefault();
 
-        // 터치 시작 위치와 시간 확인 (실수 터치 방지)
+        // 터치 시작 위치와 시간 확인
         if (!this.touchStartPos || !this.touchStartTime) return;
 
         const touchDuration = Date.now() - this.touchStartTime;
         const endTouch = e.changedTouches[0];
         const endPos = this.getEventPosition(endTouch);
 
-        // 드래그가 아닌 탭인지 확인 (5픽셀 이내 이동, 500ms 이내)
-        const isDrag = Math.abs(endPos.x - this.touchStartPos.x) > 0 ||
-                       Math.abs(endPos.y - this.touchStartPos.y) > 0;
+        // 미리보기 돌이 있는 경우 드래그 조정만 가능
+        if (this.state.previewStone) {
+            // 드래그 중이었다면 위치만 업데이트
+            if (this.state.isDragging) {
+                this.updatePreviewStone(endPos.x, endPos.y);
+            }
+        } else {
+            // 새로운 미리보기 돌 생성 (탭 동작)
+            const isDrag = Math.abs(endPos.x - this.touchStartPos.x) > 1 ||
+                           Math.abs(endPos.y - this.touchStartPos.y) > 1;
 
-        if (!isDrag && touchDuration < 500) {
-            this.handleGameMove(endTouch);
-            // 터치 피드백 효과
-            this.showTouchFeedback(endPos.x, endPos.y);
+            if (!isDrag && touchDuration < 500) {
+                this.showPreviewStone(endPos.x, endPos.y);
+                this.showTouchFeedback(endPos.x, endPos.y);
+            }
         }
 
         this.touchStartPos = null;
         this.touchStartTime = null;
+        this.state.isDragging = false;
         this.clearHover();
     }
 
@@ -419,6 +474,11 @@ class OmokGameClient {
 
     // 게임 이동 처리
     handleGameMove(e) {
+        // 터치 디바이스에서는 미리보기 시스템 사용, 마우스 클릭에서는 즉시 이동
+        if (e.type === 'touchend' || e.type === 'touchstart') {
+            return; // 터치 이벤트는 별도 핸들러에서 처리
+        }
+
         e.preventDefault();
         const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (!this.ws || this.state.players.length < 2 || !myPlayer ||
@@ -431,7 +491,7 @@ class OmokGameClient {
         const y = pos.y;
 
         if (x >= 0 && x < 15 && y >= 0 && y < 15 && this.state.gameState.board[y][x] === 0) {
-            // 서버에 이동 정보만 전송
+            // 서버에 이동 정보만 전송 (데스크톱은 즉시 이동)
             this.ws.send(JSON.stringify({
                 type: 'move',
                 move: {x, y},
@@ -1397,6 +1457,113 @@ class OmokGameClient {
         this.showModal('알림', '상대방이 무르기를 거부했습니다.', [
             { text: '확인', class: 'primary', onclick: () => this.hideModal() }
         ]);
+    }
+
+    // 모바일 터치 미리보기 시스템
+    showPreviewStone(x, y) {
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        if (!myPlayer || this.state.gameState.current_player !== myPlayer.color ||
+            this.state.gameEnded || this.state.gameState.board[y][x] !== 0) {
+            return false;
+        }
+
+        this.state.previewStone = {
+            x: x,
+            y: y,
+            color: myPlayer.color
+        };
+
+        this.showConfirmButtons();
+        this.drawBoard();
+        return true;
+    }
+
+    updatePreviewStone(x, y) {
+        if (!this.state.previewStone) return false;
+
+        if (x >= 0 && x < 15 && y >= 0 && y < 15 && this.state.gameState.board[y][x] === 0) {
+            this.state.previewStone.x = x;
+            this.state.previewStone.y = y;
+            this.drawBoard();
+            return true;
+        }
+        return false;
+    }
+
+    showConfirmButtons() {
+        const buttonsElement = document.getElementById('mobileConfirmButtons');
+        if (buttonsElement) {
+            buttonsElement.style.display = 'flex';
+            this.state.showingConfirmButtons = true;
+        }
+    }
+
+    hideConfirmButtons() {
+        const buttonsElement = document.getElementById('mobileConfirmButtons');
+        if (buttonsElement) {
+            buttonsElement.style.display = 'none';
+            this.state.showingConfirmButtons = false;
+        }
+    }
+
+    confirmMove() {
+        if (!this.state.previewStone) return;
+
+        const { x, y, color } = this.state.previewStone;
+
+        // 돌 놓기
+        this.state.gameState.board[y][x] = color;
+        this.state.lastMove = { x, y };
+
+        // 총 수 횟수 계산
+        this.state.gameStats.moves = 0;
+        for (let dy = 0; dy < 15; dy++) {
+            for (let dx = 0; dx < 15; dx++) {
+                if (this.state.gameState.board[dy][dx] !== 0) {
+                    this.state.gameStats.moves++;
+                }
+            }
+        }
+
+        // 승리 확인
+        const winLine = this.checkWin(this.state.gameState.board, x, y, color);
+        if (winLine) {
+            this.state.gameEnded = true;
+            this.state.winningLine = winLine;
+            this.createConfetti();
+            this.ws.send(JSON.stringify({
+                type: 'game_end',
+                winner: this.state.myPlayerNumber,
+                game_state: this.state.gameState,
+                last_move: this.state.lastMove,
+                winning_line: winLine,
+                session_id: this.sessionId
+            }));
+        } else {
+            // 턴 변경
+            this.state.gameState.current_player = this.state.gameState.current_player === 1 ? 2 : 1;
+
+            // 서버에 전송
+            this.ws.send(JSON.stringify({
+                type: 'move',
+                game_state: this.state.gameState,
+                last_move: this.state.lastMove,
+                session_id: this.sessionId
+            }));
+        }
+
+        // 미리보기 정리
+        this.cancelMove();
+        this.drawBoard();
+        this.updateUI();
+        this.updateUndoButton();
+    }
+
+    cancelMove() {
+        this.state.previewStone = null;
+        this.state.isDragging = false;
+        this.hideConfirmButtons();
+        this.drawBoard();
     }
 }
 
