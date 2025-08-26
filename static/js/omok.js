@@ -1223,7 +1223,7 @@ class OmokGameClient {
             localStorage.setItem('omokGameSession', JSON.stringify({
                 ...sessionData,
                 timestamp: Date.now(),
-                roomId: this.room_id
+                roomId: this.roomId
             }));
         } catch (error) {
             // 세션 저장 실패 시 무시
@@ -1242,7 +1242,7 @@ class OmokGameClient {
                 return null;
             }
 
-            if (session.roomId !== this.room_id) {
+            if (session.roomId !== this.roomId) {
                 return null;
             }
 

@@ -55,7 +55,6 @@ class GameChat {
 
         // 세션 ID 가져오기 (오목 게임용)
         const sessionData = JSON.parse(localStorage.getItem('omokGameSession') || '{}');
-        console.log('Sending chat with session_id:', sessionData.sessionId);
 
         const messageData = {
             type: 'chat_message',
