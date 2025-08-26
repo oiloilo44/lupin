@@ -408,11 +408,11 @@ class WebSocketHandler:
         if not room:
             return
 
-        # 발신자 확인
-        sender_nickname = message.get("nickname", "")
+        # 발신자 확인 (세션 ID 기반)
+        session_id = message.get("session_id", "")
         sender = None
         for player in room.players:
-            if player.nickname == sender_nickname:
+            if player.session_id == session_id:
                 sender = player
                 break
 

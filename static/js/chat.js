@@ -53,14 +53,17 @@ class GameChat {
             return;
         }
 
-        // 서버에서 세션 기반으로 발신자를 인증하므로 nickname 전송 불필요
+        // 세션 ID 가져오기 (오목 게임용)
+        const sessionData = JSON.parse(localStorage.getItem('omokGameSession') || '{}');
+        console.log('Sending chat with session_id:', sessionData.sessionId);
+
         const messageData = {
-            type: 'chatMessage',
-            message: message
+            type: 'chat_message',
+            message: message,
+            session_id: sessionData.sessionId
         };
 
-        // humps를 사용하여 snake_case로 변환
-        this.websocket.send(JSON.stringify(humps.decamelizeKeys(messageData)));
+        this.websocket.send(JSON.stringify(messageData));
 
         chatInput.value = '';
     }
@@ -155,10 +158,10 @@ class GameChat {
      * WebSocket 메시지 처리 (게임에서 호출)
      */
     handleWebSocketMessage(data) {
-        if (data.type === 'chatBroadcast') {
-            this.displayMessage(data.nickname, data.message, data.timestamp, data.playerNumber);
-        } else if (data.type === 'roomUpdate' && data.room.chatHistory) {
-            this.loadHistory(data.room.chatHistory);
+        if (data.type === 'chat_broadcast') {
+            this.displayMessage(data.nickname, data.message, data.timestamp, data.player_number);
+        } else if (data.type === 'room_update' && data.room && data.room.chat_history) {
+            this.loadHistory(data.room.chat_history);
         }
     }
 }
