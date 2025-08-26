@@ -13,11 +13,11 @@ wheels/
 # Virtual Environment
 .venv/
 venv/
-.env*
+.env
 .python-version
 
 # IDE & Editor
-.*/
+.vscode/
 .idea/
 *.swp
 *.swo
@@ -27,28 +27,21 @@ venv/
 .mypy_cache/
 .pytest_cache/
 .coverage
+*.coverage
 
-# Project Specific
+# Logs
+logs/
 *.log
-game_errors.log
-
-# Documentation (except README files)
-/*.md
-!README*.md
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Docker
-.dockerignore
 
 # Temporary files
 *.tmp
 *.temp
 .cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Planning & Documentation (개발 중 임시 계획서들)
+refactoring-plan/
+*.md

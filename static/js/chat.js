@@ -53,11 +53,16 @@ class GameChat {
             return;
         }
 
-        // 서버에서 세션 기반으로 발신자를 인증하므로 nickname 전송 불필요
-        this.websocket.send(JSON.stringify({
+        // 세션 ID 가져오기 (오목 게임용)
+        const sessionData = JSON.parse(localStorage.getItem('omokGameSession') || '{}');
+
+        const messageData = {
             type: 'chat_message',
-            message: message
-        }));
+            message: message,
+            session_id: sessionData.sessionId
+        };
+
+        this.websocket.send(JSON.stringify(messageData));
 
         chatInput.value = '';
     }
@@ -65,24 +70,15 @@ class GameChat {
     /**
      * 채팅 메시지 표시
      */
-    displayMessage(nickname, message, timestamp, player_number) {
+    displayMessage(nickname, message, timestamp, playerNumber) {
         const chatMessages = document.getElementById(this.chatMessagesId);
         if (!chatMessages) return;
-<<<<<<< HEAD
 
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         // 빈 메시지 제거
         const emptyMessage = chatMessages.querySelector('.chat-empty');
         if (emptyMessage) {
             emptyMessage.remove();
         }
-<<<<<<< HEAD
-
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
 
@@ -113,14 +109,9 @@ class GameChat {
         if (!chatMessages) return;
 
         chatMessages.innerHTML = '';
-<<<<<<< HEAD
-
-=======
-
->>>>>>> fix/turn-display-and-field-naming
         if (chatHistory && chatHistory.length > 0) {
             chatHistory.forEach(msg => {
-                this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
+                this.displayMessage(msg.nickname, msg.message, msg.timestamp, msg.playerNumber);
             });
         } else {
             // 채팅 히스토리가 없으면 빈 메시지 표시
@@ -168,7 +159,7 @@ class GameChat {
     handleWebSocketMessage(data) {
         if (data.type === 'chat_broadcast') {
             this.displayMessage(data.nickname, data.message, data.timestamp, data.player_number);
-        } else if (data.type === 'room_update' && data.room.chat_history) {
+        } else if (data.type === 'room_update' && data.room && data.room.chat_history) {
             this.loadHistory(data.room.chat_history);
         }
     }
@@ -189,9 +180,9 @@ function sendChatMessage() {
     }
 }
 
-function displayChatMessage(nickname, message, timestamp, player_number) {
+function displayChatMessage(nickname, message, timestamp, playerNumber) {
     if (window.gameChat) {
-        window.gameChat.displayMessage(nickname, message, timestamp, player_number);
+        window.gameChat.displayMessage(nickname, message, timestamp, playerNumber);
     }
 }
 

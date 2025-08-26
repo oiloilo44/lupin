@@ -1,6 +1,17 @@
 /* 반응형 디자인 */
 
 @media (max-width: 768px) {
+    /* 모든 메인 컨테이너를 모바일에서 불투명하게 */
+    .game-overlay,
+    .excel-container,
+    .main-container,
+    .game-menu,
+    #roomCreated,
+    .nickname-form {
+        opacity: 1 !important;
+        background: rgba(255, 255, 255, 1) !important;
+    }
+
     /* 모바일에서 Excel UI 숨기기 옵션 */
     body.mobile-mode .excel-container {
         display: none;
@@ -68,6 +79,8 @@
         overflow-y: auto;
         padding: 10px;
         box-sizing: border-box !important;
+        opacity: 1 !important;
+        background: rgba(255, 255, 255, 1) !important;
     }
 
     .game-menu {
@@ -310,6 +323,8 @@
         padding: 8px 12px;
         font-size: 12px;
         min-height: auto;
+        opacity: 1 !important;
+        background: rgba(255, 255, 255, 0.98) !important;
     }
 
     .toast-title {
@@ -335,9 +350,86 @@
         min-height: 44px;
         font-size: 14px;
     }
+
+    /* 768px 이하에서 방 생성 UI 개선 - flex 배치 유지 */
+    #roomCreated {
+        padding: 15px !important;
+    }
+
+    #roomCreated input[type="text"] {
+        min-height: 44px !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    #roomCreated button {
+        min-height: 44px !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        border: 1px solid #d1d5db !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        transition: all 0.2s ease !important;
+        flex-shrink: 0 !important;
+        min-width: 120px !important;
+        max-width: 140px !important;
+    }
+
+    #roomCreated button[onclick="copyToClipboard()"] {
+        background: #10b981 !important;
+        color: white !important;
+        border-color: #10b981 !important;
+    }
+
+    #roomCreated button[onclick="joinRoomAsHost()"] {
+        background: #3b82f6 !important;
+        color: white !important;
+        border-color: #3b82f6 !important;
+    }
 }
 
 @media (max-width: 480px) {
+    /* 방 생성 UI 완전 세로 배치 */
+    #roomCreated > div,
+    #roomCreated div[style*="display: flex"] {
+        display: block !important;
+        text-align: center !important;
+    }
+
+    #roomCreated input[type="text"] {
+        display: block !important;
+        width: calc(100% - 20px) !important;
+        max-width: calc(100vw - 50px) !important;
+        margin: 8px auto !important;
+        flex: none !important;
+        box-sizing: border-box !important;
+    }
+
+    #roomCreated button {
+        display: block !important;
+        width: calc(100% - 20px) !important;
+        max-width: calc(100vw - 50px) !important;
+        margin: 8px auto !important;
+        flex: none !important;
+        box-sizing: border-box !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+    }
+
+    /* 뒤로가기 버튼과 게임 입장 버튼 간격 조정 */
+    #roomCreated button[onclick="backToOmokMenu()"],
+    #roomCreated .back-button {
+        margin-top: 50px !important;
+        margin-bottom: 8px !important;
+    }
+
     /* 더 작은 화면에서 게임 정보 패널 세로 배치 */
     .info-panels-container .game-info-panel {
         min-width: 100%;
@@ -397,26 +489,104 @@
         padding: 12px;
     }
 
+    /* 닉네임 입력 컨테이너 모바일 최적화 */
+    .nickname-input-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        width: 100%;
+    }
+
+    .nickname-input-container input {
+        width: 100% !important;
+        max-width: 280px;
+        margin: 0 !important;
+        font-size: 16px !important; /* iOS 자동 줌 방지 */
+    }
+
+    .nickname-input-container button {
+        width: 100% !important;
+        max-width: 280px;
+        margin: 0 !important;
+    }
+
+    /* 메인 페이지 방 생성 UI 컨테이너 모바일 최적화 */
+    #roomCreated {
+        padding: 15px !important;
+    }
+
+    #roomCreated > div[style*="flex"],
+    #roomCreated div[style*="flex"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: stretch !important;
+        margin: 12px 0 !important;
+    }
+
+    /* 인라인 flex 스타일 강제 오버라이드 */
+    #roomCreated div[style*="display: flex"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
     /* 메인 페이지 입력 필드 모바일 최적화 */
     .room-link-input,
     .room-url-input,
-    .nickname-input {
+    .nickname-input,
+    #roomUrl,
+    #hostNickname {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 8px 0 !important;
+        margin: 0 !important;
+        padding: 12px 16px !important;
+        min-height: 48px !important;
         font-size: 16px !important; /* iOS 자동 줌 방지 */
+        border: 1px solid #d1d5db !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
     }
 
     /* 메인 페이지 버튼 모바일 최적화 */
     .back-button,
     .join-room-button,
     .join-game-button,
-    .copy-link-button {
+    .copy-link-button,
+    button[onclick="copyToClipboard()"],
+    button[onclick="joinRoomAsHost()"] {
         width: 100% !important;
-        margin: 8px 0 !important;
+        margin: 0 !important;
         padding: 12px 16px !important;
-        min-height: 44px !important;
-        font-size: 14px !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        border: 1px solid #d1d5db !important;
+        background: #3b82f6 !important;
+        color: white !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* 링크 복사 버튼 색상 */
+    button[onclick="copyToClipboard()"] {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+    }
+
+    button[onclick="copyToClipboard()"]:hover,
+    button[onclick="copyToClipboard()"]:active {
+        background: #059669 !important;
+        border-color: #059669 !important;
+    }
+
+    .join-game-button:hover,
+    button[onclick="joinRoomAsHost()"]:hover {
+        background: #2563eb !important;
+        border-color: #2563eb !important;
     }
 
     .modal-footer {
@@ -426,5 +596,58 @@
     .modal-button {
         width: 100%;
         margin: 4px 0;
+    }
+
+    /* 모바일 확정 버튼 스타일 */
+    .mobile-confirm-buttons {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        transform: none;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        z-index: 1000;
+        padding: 0 20px;
+        box-sizing: border-box;
+    }
+
+    .mobile-confirm-buttons button {
+        flex: 1;
+        min-width: 80px;
+        max-width: 120px;
+        padding: 12px 20px !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .confirm-button {
+        background: #22c55e !important;
+        color: white !important;
+    }
+
+    .confirm-button:hover, .confirm-button:active {
+        background: #16a34a !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(34, 197, 94, 0.3) !important;
+    }
+
+    .cancel-button {
+        background: #ef4444 !important;
+        color: white !important;
+    }
+
+    .cancel-button:hover, .cancel-button:active {
+        background: #dc2626 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3) !important;
     }
 }
