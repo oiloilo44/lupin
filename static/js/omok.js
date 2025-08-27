@@ -724,31 +724,45 @@ class OmokGameClient {
     }
 
     handleError(data) {
-        const errorMessage = data.message || '알 수 없는 오류가 발생했습니다.';
+        console.error('서버 오류:', data.message);
 
-        const isCriticalError = errorMessage.includes('세션') ||
-                               errorMessage.includes('플레이어 정보') ||
-                               errorMessage.includes('연결');
+        // 오류 타입별 처리
+        switch(data.error_type) {
+            case 'validation':
+                showGlobalToast('입력 오류', data.message, 'warning', 4000);
+                break;
+            case 'server':
+                showGlobalToast('서버 오류', data.message, 'error', 5000);
+                break;
+            case 'game':
+                showGlobalToast('게임 오류', data.message, 'warning', 3000);
 
-        // 잘못된 수에 대한 시각적 피드백
-        const isInvalidMove = errorMessage.includes('올바르지 않은') ||
-                             errorMessage.includes('이미 놓인') ||
-                             errorMessage.includes('차례가 아닙니다') ||
-                             errorMessage.includes('유효하지 않은');
+                // 잘못된 수에 대한 시각적 피드백
+                const isInvalidMove = data.message.includes('올바르지 않은') ||
+                                     data.message.includes('이미 놓인') ||
+                                     data.message.includes('차례가 아닙니다') ||
+                                     data.message.includes('유효하지 않은');
 
-        if (isInvalidMove) {
-            this.showInvalidMoveAnimation();
+                if (isInvalidMove) {
+                    this.showInvalidMoveAnimation();
+                }
+                break;
+            default:
+                showGlobalToast('오류', data.message, 'error', 4000);
         }
 
-        if (isCriticalError) {
-            this.showModal('심각한 오류', errorMessage, [
+        // 심각한 오류의 경우 추가 처리
+        const isCriticalError = data.message.includes('세션') ||
+                               data.message.includes('플레이어 정보') ||
+                               data.message.includes('연결');
+
+        if (isCriticalError && data.error_type === 'server') {
+            this.showModal('심각한 오류', data.message, [
                 { text: '메인으로', class: 'primary', onclick: () => {
                     this.hideModal();
                     window.location.href = '/';
                 }}
             ]);
-        } else {
-            this.showToast('게임 오류', errorMessage, 'error', 3000);
         }
     }
 
