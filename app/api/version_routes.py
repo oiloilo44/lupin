@@ -1,6 +1,8 @@
 """버전 API 라우트."""
 
-from fastapi import APIRouter
+import os
+
+from fastapi import APIRouter, HTTPException
 
 from ..version import clear_version_cache, get_current_app_version
 
@@ -16,6 +18,10 @@ async def get_version():
 @router.post("/version/clear-cache")
 async def clear_cache():
     """버전 캐시 클리어 (개발용)."""
+    # 개발 환경에서만 허용
+    if os.getenv("DEBUG", "false").lower() != "true":
+        raise HTTPException(status_code=404, detail="Not found")
+
     clear_version_cache()
     return {
         "message": "Version cache cleared",

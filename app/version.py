@@ -1,13 +1,29 @@
 """애플리케이션 버전 관리."""
 import hashlib
 import logging
+import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+# 버전 계산에 사용할 핵심 파일들
+CORE_FILES = [
+    "main.py",
+    "app/routes.py",
+    "app/websocket_handler.py",
+    "app/room_manager.py",
+    "app/models.py",
+    "app/games/omok.py",
+    "app/games/omok_manager.py",
+    "static/js/omok.js",
+    "static/js/base.js",
+    "templates/base.html",
+    "templates/omok.html",
+]
+
 # 앱 버전 캐시
-_app_version_cache: str | None = None
+_app_version_cache: Optional[str] = None
 
 
 def get_app_version() -> str:
@@ -18,24 +34,9 @@ def get_app_version() -> str:
         return _app_version_cache
 
     try:
-        # 핵심 파일들의 경로 정의
-        core_files = [
-            "main.py",
-            "app/routes.py",
-            "app/websocket_handler.py",
-            "app/room_manager.py",
-            "app/models.py",
-            "app/games/omok.py",
-            "app/games/omok_manager.py",
-            "static/js/omok.js",
-            "static/js/base.js",
-            "templates/base.html",
-            "templates/omok.html",
-        ]
-
         # 모든 파일의 내용을 연결하여 해시 생성
         combined_content = b""
-        for file_path in core_files:
+        for file_path in CORE_FILES:
             full_path = Path(file_path)
             if full_path.exists():
                 combined_content += full_path.read_bytes()
@@ -51,8 +52,6 @@ def get_app_version() -> str:
     except Exception as e:
         logger.error(f"앱 버전 생성 실패: {e}")
         # 실패시 현재 시간 기반 임시 버전
-        import time
-
         return str(int(time.time()))[:8]
 
 
