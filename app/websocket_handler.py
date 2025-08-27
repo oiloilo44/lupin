@@ -349,8 +349,8 @@ class WebSocketHandler:
             return
 
         # 요청자 플레이어 정보 확인
-        omok_manager = room_manager.get_game_manager(GameType.OMOK)
-        requester_player = omok_manager.find_player_by_session(
+        game_manager = room_manager.get_game_manager(room.game_type)
+        requester_player = game_manager.find_player_by_session(
             room, requester_session_id
         )
         if not requester_player:
@@ -400,8 +400,11 @@ class WebSocketHandler:
                         },
                     )
                     await ws.send_text(json.dumps(confirm_response.to_json()))
-            except Exception:
-                # 연결이 끊어진 경우 무시
+            except Exception as e:
+                # 연결이 끊어진 경우 로깅 후 무시
+                import logging
+
+                logging.warning(f"Failed to send undo request to websocket: {e}")
                 pass
 
     async def _handle_undo_response(
@@ -436,8 +439,11 @@ class WebSocketHandler:
                 response = WebSocketMessage(type=MessageType.UNDO_REJECTED, data={})
                 try:
                     await requester_ws.send_text(json.dumps(response.to_json()))
-                except Exception:
-                    # 연결이 끊어진 경우 무시
+                except Exception as e:
+                    # 연결이 끊어진 경우 로깅 후 무시
+                    import logging
+
+                    logging.warning(f"Failed to send undo rejection to requester: {e}")
                     pass
 
         # 무르기 요청 정보 초기화

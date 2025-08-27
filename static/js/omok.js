@@ -28,6 +28,7 @@ class OmokGameClient {
             waitingForUndo: false,
             winnerNumber: null,
             myNickname: playerData ? playerData.nickname : null,
+            moveHistory: [], // 수 기록 관리
             // 모바일 터치 미리보기 시스템
             previewStone: null,  // {x, y, color}
             isDragging: false,
@@ -636,10 +637,14 @@ class OmokGameClient {
             });
         }
 
-        // 무브 히스토리에서 마지막 수 복원
-        if (data.moveHistory && data.moveHistory.length > 0) {
-            const lastMoveEntry = data.moveHistory[data.moveHistory.length - 1];
-            this.state.lastMove = lastMoveEntry.move;
+        // 무브 히스토리 복원
+        if (data.moveHistory) {
+            this.state.moveHistory = data.moveHistory;
+            // 마지막 수 복원
+            if (data.moveHistory.length > 0) {
+                const lastMoveEntry = data.moveHistory[data.moveHistory.length - 1];
+                this.state.lastMove = lastMoveEntry.move;
+            }
         }
 
         // 총 수 횟수 계산
@@ -667,6 +672,14 @@ class OmokGameClient {
 
         if (data.lastMove) {
             this.state.lastMove = data.lastMove;
+
+            // moveHistory에 새로운 수 추가
+            const newMoveEntry = {
+                move: data.lastMove,
+                player: previousPlayer // 이전 플레이어가 방금 둔 수
+            };
+            this.state.moveHistory.push(newMoveEntry);
+
             this.recalculateMoveCount();
         }
         this.drawBoard();
@@ -1413,6 +1426,7 @@ class OmokGameClient {
         this.state.winnerNumber = null;
         this.state.gameStats = { moves: 0, startTime: Date.now() };
         this.state.gameState = data.gameState;
+        this.state.moveHistory = []; // 게임 재시작 시 히스토리 초기화
 
         if (data.players) {
             this.state.players = data.players;
@@ -1483,6 +1497,12 @@ class OmokGameClient {
         this.recalculateMoveCount();
         this.state.waitingForUndo = false;
         this.state.lastMove = null;
+
+        // moveHistory에서 마지막 수 제거
+        if (this.state.moveHistory.length > 0) {
+            this.state.moveHistory.pop();
+        }
+
         this.hideModal();
         this.drawBoard();
         this.updateUI();

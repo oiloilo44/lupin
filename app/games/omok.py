@@ -2,6 +2,12 @@ from typing import List, Optional
 
 from ..models import GameMove, MoveHistoryEntry, OmokGameState
 
+# 오목 게임 상수
+BOARD_SIZE = 15
+FIRST_PLAYER = 1
+SECOND_PLAYER = 2
+WINNING_COUNT = 5
+
 
 class OmokGame:
     """오목 게임 로직."""
@@ -10,13 +16,14 @@ class OmokGame:
     def create_initial_state() -> OmokGameState:
         """초기 게임 상태 생성."""
         return OmokGameState(
-            board=[[0 for _ in range(15)] for _ in range(15)], current_player=1
+            board=[[0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)],
+            current_player=FIRST_PLAYER,
         )
 
     @staticmethod
     def is_valid_move(board: List[List[int]], x: int, y: int) -> bool:
         """유효한 수인지 확인."""
-        if not (0 <= x < 15 and 0 <= y < 15):
+        if not (0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE):
             return False
         return board[y][x] == 0
 
@@ -27,7 +34,9 @@ class OmokGame:
             return False
 
         game_state.board[y][x] = player
-        game_state.current_player = 2 if player == 1 else 1
+        game_state.current_player = (
+            SECOND_PLAYER if player == FIRST_PLAYER else FIRST_PLAYER
+        )
         return True
 
     @staticmethod
@@ -42,24 +51,32 @@ class OmokGame:
             win_line = [{"x": x, "y": y}]
 
             # 한 방향으로 확인
-            for i in range(1, 5):
+            for i in range(1, WINNING_COUNT):
                 nx, ny = x + dx * i, y + dy * i
-                if 0 <= nx < 15 and 0 <= ny < 15 and board[ny][nx] == player:
+                if (
+                    0 <= nx < BOARD_SIZE
+                    and 0 <= ny < BOARD_SIZE
+                    and board[ny][nx] == player
+                ):
                     count += 1
                     win_line.append({"x": nx, "y": ny})
                 else:
                     break
 
             # 반대 방향으로 확인
-            for i in range(1, 5):
+            for i in range(1, WINNING_COUNT):
                 nx, ny = x - dx * i, y - dy * i
-                if 0 <= nx < 15 and 0 <= ny < 15 and board[ny][nx] == player:
+                if (
+                    0 <= nx < BOARD_SIZE
+                    and 0 <= ny < BOARD_SIZE
+                    and board[ny][nx] == player
+                ):
                     count += 1
                     win_line.insert(0, {"x": nx, "y": ny})
                 else:
                     break
 
-            if count == 5:
+            if count == WINNING_COUNT:
                 return win_line  # 정확히 5개만 반환
 
         return None
@@ -95,8 +112,10 @@ class OmokGame:
             game_state.current_player = undone_move_player
         else:
             # 처음 상태로 복원 (첫 수를 무른 경우)
-            game_state.board = [[0 for _ in range(15)] for _ in range(15)]
-            game_state.current_player = 1
+            game_state.board = [
+                [0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)
+            ]
+            game_state.current_player = FIRST_PLAYER
 
         return True
 
