@@ -819,18 +819,20 @@ class OmokGameClient {
         const previousPlayer = this.state.gameState.current_player;
         this.state.gameState = data.game_state;
 
-        if (data.lastMove) {
+        if (data.last_move) {
             this.state.lastMove = data.last_move;
 
-            // moveHistory에 새로운 수 추가
+            // move_history에 새로운 수 추가
             const newMoveEntry = {
-                move: data.lastMove,
+                move: data.last_move,
                 player: previousPlayer // 이전 플레이어가 방금 둔 수
             };
             this.state.moveHistory.push(newMoveEntry);
-
-            this.recalculateMoveCount();
         }
+
+        // 항상 move count를 재계산 (게임 시작 시에도 필요)
+        this.recalculateMoveCount();
+
         this.drawBoard();
         this.updateUI();
         this.updateUndoButton();
