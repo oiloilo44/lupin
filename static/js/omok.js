@@ -20,6 +20,7 @@ class OmokGameClient {
             myPlayerNumber: playerData ? playerData.playerNumber : null,
             players: [],
             gameEnded: false,
+            gameStarted: false,
             waitingForRestart: false,
             lastMove: null,
             hoverPosition: null,
@@ -28,6 +29,7 @@ class OmokGameClient {
             waitingForUndo: false,
             winnerNumber: null,
             myNickname: playerData ? playerData.nickname : null,
+            moveHistory: [], // 수 기록 관리
             // 모바일 터치 미리보기 시스템
             previewStone: null,  // {x, y, color}
             isDragging: false,
@@ -601,6 +603,7 @@ class OmokGameClient {
             this.drawBoard();
         } else if (this.state.players.length === 2) {
             this.showGameArea();
+            this.state.gameStarted = true;
             this.state.gameStats.startTime = Date.now();
             this.showToast('게임 시작', '모든 플레이어가 참여했습니다. 게임을 시작합니다!', 'success');
             this.drawBoard();
@@ -618,6 +621,10 @@ class OmokGameClient {
         }
         if (data.room && data.room.players) {
             this.state.players = data.room.players;
+            // 재연결 시 플레이어가 2명이면 게임이 시작된 상태
+            if (this.state.players.length === 2) {
+                this.state.gameStarted = true;
+            }
         }
         if (data.player) {
             this.state.myPlayerNumber = data.player.playerNumber;
@@ -636,10 +643,14 @@ class OmokGameClient {
             });
         }
 
-        // 무브 히스토리에서 마지막 수 복원
-        if (data.moveHistory && data.moveHistory.length > 0) {
-            const lastMoveEntry = data.moveHistory[data.moveHistory.length - 1];
-            this.state.lastMove = lastMoveEntry.move;
+        // 무브 히스토리 복원
+        if (data.moveHistory) {
+            this.state.moveHistory = data.moveHistory;
+            // 마지막 수 복원
+            if (data.moveHistory.length > 0) {
+                const lastMoveEntry = data.moveHistory[data.moveHistory.length - 1];
+                this.state.lastMove = lastMoveEntry.move;
+            }
         }
 
         // 총 수 횟수 계산
@@ -667,6 +678,14 @@ class OmokGameClient {
 
         if (data.lastMove) {
             this.state.lastMove = data.lastMove;
+
+            // moveHistory에 새로운 수 추가
+            const newMoveEntry = {
+                move: data.lastMove,
+                player: previousPlayer // 이전 플레이어가 방금 둔 수
+            };
+            this.state.moveHistory.push(newMoveEntry);
+
             this.recalculateMoveCount();
         }
         this.drawBoard();
@@ -1048,8 +1067,11 @@ class OmokGameClient {
         const undoButton = document.getElementById('undoButton');
         if (undoButton) {
             const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            // 무르기는 자신의 턴과 상대방 턴 모두에서 가능
+            // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
+            // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
             const canUndo = this.ws && !this.state.gameEnded && !this.state.waitingForUndo &&
-                           this.state.gameStats.moves > 0 && myPlayer && this.state.gameState.currentPlayer !== myPlayer.color;
+                           this.state.gameStats.moves > 0 && myPlayer;
             undoButton.disabled = !canUndo;
             undoButton.style.opacity = canUndo ? '1' : '0.5';
         }
@@ -1066,7 +1088,8 @@ class OmokGameClient {
     updateRestartButton() {
         const restartButton = document.getElementById('restartButton');
         if (restartButton) {
-            const canRestart = this.ws && this.state.gameEnded && !this.state.waitingForRestart;
+            // 게임이 시작되었거나 끝났을 때 다시하기 가능 (대기 중이 아닌 경우)
+            const canRestart = this.ws && (this.state.gameStarted || this.state.gameEnded) && !this.state.waitingForRestart;
             restartButton.disabled = !canRestart;
             restartButton.style.opacity = canRestart ? '1' : '0.5';
 
@@ -1178,8 +1201,9 @@ class OmokGameClient {
             return;
         }
 
-        if (!this.state.gameEnded) {
-            this.showModal('알림', '게임이 진행 중입니다. 게임이 끝난 후 재시작할 수 있습니다.', [
+        // 게임이 시작되지 않았다면 재시작 불가
+        if (!this.state.gameStarted) {
+            this.showModal('알림', '게임이 시작되지 않았습니다.', [
                 { text: '확인', class: 'primary', onclick: () => this.hideModal() }
             ]);
             return;
@@ -1201,12 +1225,10 @@ class OmokGameClient {
         }
 
         const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
-        if (myPlayer && this.state.gameState.currentPlayer === myPlayer.color) {
-            this.showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
-            return;
-        }
+
+        // 무르기 가능한 상황인지 확인 (자신/상대방 수 모두 무르기 가능)
+        // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
+        // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
 
         this.state.waitingForUndo = true;
         const message = {
@@ -1357,10 +1379,10 @@ class OmokGameClient {
     handleRestartRequest(data) {
         const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
 
-        if (data.is_requester) {
-            this.showModal('게임 재시작 요청', '상대방에게 재시작 요청을 보냈습니다. 응답을 기다리는 중...', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
+        if (data.isRequester) {
+            // 요청자에게는 모달 대신 토스트로 알림
+            this.showToast('재시작 요청', '상대방에게 재시작 요청을 보냈습니다.', 'info', 3000);
+            this.updateUI(); // 버튼 상태 업데이트
         } else {
             this.showModal('게임 재시작 요청',
                 `${requesterName}님이 게임 재시작을 요청했습니다.<br>재시작하시겠습니까?`, [
@@ -1396,12 +1418,14 @@ class OmokGameClient {
 
     handleRestartAccepted(data) {
         this.state.gameEnded = false;
+        this.state.gameStarted = true;
         this.state.waitingForRestart = false;
         this.state.lastMove = null;
         this.state.winningLine = null;
         this.state.winnerNumber = null;
         this.state.gameStats = { moves: 0, startTime: Date.now() };
         this.state.gameState = data.gameState;
+        this.state.moveHistory = []; // 게임 재시작 시 히스토리 초기화
 
         if (data.players) {
             this.state.players = data.players;
@@ -1430,13 +1454,24 @@ class OmokGameClient {
     handleUndoRequest(data) {
         const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
 
-        if (data.is_requester) {
-            this.showModal('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
+        if (data.isRequester) {
+            // 요청자에게는 토스트 메시지로만 알림 (팝업 없음)
+            this.showToast('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', 'info');
         } else {
-            this.showModal('무르기 요청',
-                `${requesterName}님이 무르기를 요청했습니다.<br>마지막 수를 취소하시겠습니까?`, [
+            // 무르기 대상 수 확인 (마지막 수가 누구 것인지)
+            const lastMove = this.state.moveHistory?.[this.state.moveHistory.length - 1];
+            const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            let message;
+
+            if (lastMove && myPlayer && lastMove.player === myPlayer.color) {
+                // 내 수를 무르기 요청받음 (상대방이 내 수를 무르자고 요청)
+                message = `${requesterName}님이 무르기를 요청했습니다.<br>내가 둔 마지막 수를 취소하시겠습니까?`;
+            } else {
+                // 상대방 수를 무르기 요청받음 (상대방이 자신의 수를 무르자고 요청)
+                message = `${requesterName}님이 무르기를 요청했습니다.<br>${requesterName}님이 둔 마지막 수를 취소하시겠습니까?`;
+            }
+
+            this.showModal('무르기 요청', message, [
                 {
                     text: '거부',
                     class: 'secondary',
@@ -1472,6 +1507,12 @@ class OmokGameClient {
         this.recalculateMoveCount();
         this.state.waitingForUndo = false;
         this.state.lastMove = null;
+
+        // moveHistory에서 마지막 수 제거
+        if (this.state.moveHistory.length > 0) {
+            this.state.moveHistory.pop();
+        }
+
         this.hideModal();
         this.drawBoard();
         this.updateUI();

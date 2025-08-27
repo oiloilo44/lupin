@@ -105,7 +105,7 @@ def add_version_to_url(url: str) -> str:
 def clear_version_cache() -> None:
     """버전 캐시 클리어 (개발/테스트용)."""
     global _file_version_cache, _app_version_cache
-    _file_version_cache.clear()
+    _file_version_cache = {}
     _app_version_cache = None
 
 
