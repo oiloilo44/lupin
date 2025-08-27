@@ -7,6 +7,9 @@ class VersionChecker {
         this.currentVersion = currentVersion;
         this.checkInterval = checkInterval;
         this.isCheckingVersion = false;
+        this.updateNotificationShown = false;
+        this.lastCheckTime = 0;
+        this.minFocusCheckInterval = 600000; // 포커스 시 체크는 10분 간격 최소
     }
 
     /**
@@ -18,12 +21,22 @@ class VersionChecker {
             this.checkForUpdates();
         }, this.checkInterval);
 
-        // 페이지 포커스시에도 체크
+        // 페이지 포커스시에도 체크 (10분 간격 제한)
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                this.checkForUpdates();
+                this.checkForUpdatesOnFocus();
             }
         });
+    }
+
+    /**
+     * 포커스 시 버전 체크 (간격 제한 적용)
+     */
+    checkForUpdatesOnFocus() {
+        const now = Date.now();
+        if (now - this.lastCheckTime >= this.minFocusCheckInterval) {
+            this.checkForUpdates();
+        }
     }
 
     /**
@@ -33,6 +46,7 @@ class VersionChecker {
         if (this.isCheckingVersion) return;
 
         this.isCheckingVersion = true;
+        this.lastCheckTime = Date.now();
 
         try {
             const response = await fetch('/api/version', {
@@ -44,8 +58,9 @@ class VersionChecker {
                 const data = await response.json();
                 const serverVersion = data.version;
 
-                if (serverVersion !== this.currentVersion) {
+                if (serverVersion !== this.currentVersion && !this.updateNotificationShown) {
                     this.showUpdateNotification();
+                    this.updateNotificationShown = true;
                 }
             }
         } catch (error) {
@@ -156,6 +171,7 @@ class VersionChecker {
         notification.querySelector('.btn-dismiss').addEventListener('click', () => {
             clearInterval(countdownInterval);
             notification.remove();
+            // 다시 표시되지 않도록 플래그 유지
         });
     }
 }

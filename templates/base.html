@@ -78,9 +78,11 @@
     <script src="{{ add_version_to_url('/static/js/version-check.js') }}"></script>
 
     <script>
-        // 버전 체크 시작
+        // 버전 체크 시작 (개발: 1분, 프로덕션: 5분)
         if (typeof VersionChecker !== 'undefined') {
-            const versionChecker = new VersionChecker('{{ app_version }}', 30000);
+            const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const checkInterval = isDevelopment ? 60000 : 300000;
+            const versionChecker = new VersionChecker('{{ app_version }}', checkInterval);
             versionChecker.start();
         }
     </script>
