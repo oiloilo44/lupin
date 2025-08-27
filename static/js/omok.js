@@ -83,6 +83,10 @@ class OmokGameClient {
             setTimeout(() => this.adjustMobileLayout(), 100);
         });
 
+        // 페이지 이동 전 정리 작업
+        this.handleBeforeUnload = () => this.cleanup();
+        window.addEventListener('beforeunload', this.handleBeforeUnload);
+
         // 터치 위치 추적용 변수
         this.touchStartPos = null;
         this.touchStartTime = null;
@@ -106,7 +110,7 @@ class OmokGameClient {
         return div.innerHTML;
     }
 
-    // 연결 상태 업데이트
+    // 연결 상태 업데이트 - 개선된 UI
     updateConnectionStatus(status, text) {
         this.connection.status = status;
         const statusElement = document.getElementById('connectionStatus');
@@ -119,12 +123,40 @@ class OmokGameClient {
             statusElement.style.display = 'block';
             statusElement.className = `connection-status ${status}`;
 
+            // 이모지 대신 CSS 스타일로 상태 표시
             if (status === 'disconnected') {
-                iconElement.textContent = '🔴';
+                iconElement.className = 'status-icon disconnected';
+                iconElement.textContent = '●';
                 textElement.textContent = text || '연결 끊김';
+
+                // 심각한 연결 문제인 경우 추가 정보 제공
+                if (this.connection.reconnectAttempts >= 3) {
+                    textElement.innerHTML = `
+                        ${text || '연결 끊김'}<br>
+                        <small class="connection-help">네트워크 상태를 확인하거나 페이지를 새로고침해주세요</small>
+                    `;
+                }
             } else if (status === 'reconnecting') {
-                iconElement.textContent = '🟡';
+                iconElement.className = 'status-icon reconnecting';
+                iconElement.textContent = '●';
                 textElement.textContent = text || '재연결 시도 중...';
+
+                // 재연결 진행률 표시
+                if (this.connection.reconnectAttempts > 0) {
+                    const progress = Math.round((this.connection.reconnectAttempts / this.connection.maxReconnectAttempts) * 100);
+                    textElement.innerHTML = `
+                        ${text || '재연결 시도 중...'}<br>
+                        <div class="reconnect-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (status === 'connecting') {
+                iconElement.className = 'status-icon connecting';
+                iconElement.textContent = '●';
+                textElement.textContent = text || '연결 중...';
             }
         }
     }
@@ -165,25 +197,136 @@ class OmokGameClient {
         }
     }
 
-    // 재연결 로직
+    // 재연결 로직 - 개선된 지수 백오프
     attemptReconnect() {
         if (this.connection.reconnectAttempts >= this.connection.maxReconnectAttempts) {
             this.updateConnectionStatus('disconnected', '재연결 실패');
-            this.showModal('연결 실패', '서버와의 연결을 복구할 수 없습니다.<br>페이지를 새로고침하거나 나중에 다시 시도해주세요.', [
-                { text: '새로고침', class: 'primary', onclick: () => location.reload() },
-                { text: '메인으로', class: 'secondary', onclick: () => window.location.href = '/' }
-            ]);
+            this.showReconnectionFailedDialog();
             return;
         }
 
         this.connection.reconnectAttempts++;
-        const delay = Math.min(1000 * Math.pow(2, this.connection.reconnectAttempts - 1), 10000);
+        // 개선된 지수 백오프: 1s, 2s, 4s, 8s, 15s, 30s
+        const baseDelay = 1000;
+        const exponentialDelay = baseDelay * Math.pow(2, this.connection.reconnectAttempts - 1);
+        const jitterDelay = exponentialDelay + Math.random() * 1000; // 지터 추가
+        const finalDelay = Math.min(jitterDelay, 30000); // 최대 30초
 
-        this.updateConnectionStatus('reconnecting', `재연결 시도 중... (${this.connection.reconnectAttempts}/${this.connection.maxReconnectAttempts})`);
+        this.updateConnectionStatus('reconnecting',
+            `재연결 시도 중... (${this.connection.reconnectAttempts}/${this.connection.maxReconnectAttempts})`
+        );
+
+        // 재연결 진행 상황을 토스트로 표시
+        const delaySeconds = Math.ceil(finalDelay / 1000);
+        showGlobalToast(
+            '재연결 시도',
+            `${delaySeconds}초 후 다시 연결을 시도합니다`,
+            'info',
+            Math.min(finalDelay - 500, 4000)
+        );
 
         this.connection.reconnectTimeout = setTimeout(() => {
             this.connectWebSocket(true);
-        }, delay);
+        }, finalDelay);
+    }
+
+    // 재연결 실패 다이얼로그
+    showReconnectionFailedDialog() {
+        this.showModal('연결 실패',
+            `서버와의 연결을 복구할 수 없습니다.<br><br>` +
+            `<strong>해결 방법:</strong><br>` +
+            `• 네트워크 연결 상태를 확인해주세요<br>` +
+            `• 페이지를 새로고침하거나 잠시 후 다시 시도해주세요`,
+            [
+                {
+                    text: '수동 재시도',
+                    class: 'secondary',
+                    onclick: () => {
+                        hideModal();
+                        this.manualReconnect();
+                    }
+                },
+                { text: '새로고침', class: 'primary', onclick: () => location.reload() },
+                { text: '메인으로', class: 'secondary', onclick: () => window.location.href = '/' }
+            ]
+        );
+    }
+
+    // 수동 재연결
+    manualReconnect() {
+        // 재연결 상태 초기화
+        this.connection.reconnectAttempts = 0;
+        if (this.connection.reconnectTimeout) {
+            clearTimeout(this.connection.reconnectTimeout);
+            this.connection.reconnectTimeout = null;
+        }
+
+        showGlobalToast('재연결 시도', '수동으로 재연결을 시도합니다', 'info');
+        this.connectWebSocket(true);
+    }
+
+    // WebSocket 정리 메서드
+    cleanupWebSocket() {
+        if (this.ws) {
+            // 이벤트 핸들러 제거
+            this.ws.onopen = null;
+            this.ws.onmessage = null;
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+
+            // WebSocket 상태가 연결 중이거나 열린 상태인 경우에만 close 호출
+            if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
+                try {
+                    this.ws.close(1000, 'Client cleanup');
+                } catch (error) {
+                    console.warn('WebSocket close error during cleanup:', error);
+                }
+            }
+
+            this.ws = null;
+        }
+
+        // 재연결 타이머 정리
+        if (this.connection.reconnectTimeout) {
+            clearTimeout(this.connection.reconnectTimeout);
+            this.connection.reconnectTimeout = null;
+        }
+
+        // 연결 상태 초기화
+        this.connection.status = 'disconnected';
+        this.connection.reconnectAttempts = 0;
+    }
+
+    // 게임 정리 메서드 (페이지 이동 시 호출)
+    cleanup() {
+        this.cleanupWebSocket();
+
+        // 게임별 정리 작업
+        if (this.gameState && this.gameState.status === 'playing') {
+            this.saveGameSession({
+                nickname: this.nickname,
+                sessionId: this.sessionId,
+                playerNumber: this.state.myPlayerNumber,
+                roomId: this.roomId,
+                joinedAt: Date.now()
+            });
+        }
+
+        // 이벤트 리스너 제거
+        this.removeEventListeners();
+    }
+
+    // 이벤트 리스너 제거
+    removeEventListeners() {
+        if (this.canvas) {
+            this.canvas.removeEventListener('click', this.handleCanvasClick);
+            this.canvas.removeEventListener('touchstart', this.handleTouchStart);
+            this.canvas.removeEventListener('touchmove', this.handleTouchMove);
+            this.canvas.removeEventListener('touchend', this.handleTouchEnd);
+        }
+
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        window.removeEventListener('resize', this.handleResize);
     }
 
     handleWebSocketClose(event) {
