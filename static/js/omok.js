@@ -1061,8 +1061,11 @@ class OmokGameClient {
         const undoButton = document.getElementById('undoButton');
         if (undoButton) {
             const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            // 무르기는 자신의 턴과 상대방 턴 모두에서 가능
+            // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
+            // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
             const canUndo = this.ws && !this.state.gameEnded && !this.state.waitingForUndo &&
-                           this.state.gameStats.moves > 0 && myPlayer && this.state.gameState.currentPlayer !== myPlayer.color;
+                           this.state.gameStats.moves > 0 && myPlayer;
             undoButton.disabled = !canUndo;
             undoButton.style.opacity = canUndo ? '1' : '0.5';
         }
@@ -1214,23 +1217,10 @@ class OmokGameClient {
         }
 
         const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
-        if (myPlayer && this.state.gameState.currentPlayer === myPlayer.color) {
-            this.showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.<br>상대방 차례일 때만 무르기를 요청할 수 있습니다.', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
-            return;
-        }
 
-        // 마지막 수가 상대방의 수인지 확인 (추가 검증)
-        if (this.state.moveHistory && this.state.moveHistory.length > 0) {
-            const lastMove = this.state.moveHistory[this.state.moveHistory.length - 1];
-            if (lastMove.player === myPlayer.color) {
-                this.showModal('알림', '자신의 마지막 수는 무를 수 없습니다.<br>상대방의 마지막 수만 무르기 요청할 수 있습니다.', [
-                    { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-                ]);
-                return;
-            }
-        }
+        // 무르기 가능한 상황인지 확인 (자신/상대방 수 모두 무르기 가능)
+        // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
+        // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
 
         this.state.waitingForUndo = true;
         const message = {
@@ -1455,13 +1445,24 @@ class OmokGameClient {
     handleUndoRequest(data) {
         const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
 
-        if (data.is_requester) {
-            this.showModal('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
+        if (data.isRequester) {
+            // 요청자에게는 토스트 메시지로만 알림 (팝업 없음)
+            this.showToast('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', 'info');
         } else {
-            this.showModal('무르기 요청',
-                `${requesterName}님이 무르기를 요청했습니다.<br>마지막 수를 취소하시겠습니까?`, [
+            // 무르기 대상 수 확인 (마지막 수가 누구 것인지)
+            const lastMove = this.state.moveHistory?.[this.state.moveHistory.length - 1];
+            const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            let message;
+
+            if (lastMove && myPlayer && lastMove.player === myPlayer.color) {
+                // 내 수를 무르기 요청받음 (상대방이 내 수를 무르자고 요청)
+                message = `${requesterName}님이 무르기를 요청했습니다.<br>내가 둔 마지막 수를 취소하시겠습니까?`;
+            } else {
+                // 상대방 수를 무르기 요청받음 (상대방이 자신의 수를 무르자고 요청)
+                message = `${requesterName}님이 무르기를 요청했습니다.<br>${requesterName}님이 둔 마지막 수를 취소하시겠습니까?`;
+            }
+
+            this.showModal('무르기 요청', message, [
                 {
                     text: '거부',
                     class: 'secondary',

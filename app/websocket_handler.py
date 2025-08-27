@@ -357,17 +357,9 @@ class WebSocketHandler:
             await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다.")
             return
 
-        # 무르기 요청 검증: 자신의 턴에는 무르기 요청할 수 없음
-        if requester_player.color == room.game_state["current_player"]:
-            await self._send_error(websocket, "자신의 턴에는 무르기를 요청할 수 없습니다.")
-            return
-
-        # 마지막 수가 요청자 본인의 수인지 확인
-        if len(room.move_history) > 0:
-            last_move = room.move_history[-1]
-            if last_move.player == requester_player.color:
-                await self._send_error(websocket, "자신의 마지막 수는 무를 수 없습니다.")
-                return
+        # 무르기 요청 검증: 수가 있는지만 확인 (자신/상대방 수 모두 무르기 가능)
+        # 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
+        # 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
 
         connections = room_manager.get_room_connections(room_id)
 
