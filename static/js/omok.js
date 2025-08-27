@@ -20,6 +20,7 @@ class OmokGameClient {
             myPlayerNumber: playerData ? playerData.playerNumber : null,
             players: [],
             gameEnded: false,
+            gameStarted: false,
             waitingForRestart: false,
             lastMove: null,
             hoverPosition: null,
@@ -602,6 +603,7 @@ class OmokGameClient {
             this.drawBoard();
         } else if (this.state.players.length === 2) {
             this.showGameArea();
+            this.state.gameStarted = true;
             this.state.gameStats.startTime = Date.now();
             this.showToast('게임 시작', '모든 플레이어가 참여했습니다. 게임을 시작합니다!', 'success');
             this.drawBoard();
@@ -619,6 +621,10 @@ class OmokGameClient {
         }
         if (data.room && data.room.players) {
             this.state.players = data.room.players;
+            // 재연결 시 플레이어가 2명이면 게임이 시작된 상태
+            if (this.state.players.length === 2) {
+                this.state.gameStarted = true;
+            }
         }
         if (data.player) {
             this.state.myPlayerNumber = data.player.playerNumber;
@@ -1082,7 +1088,8 @@ class OmokGameClient {
     updateRestartButton() {
         const restartButton = document.getElementById('restartButton');
         if (restartButton) {
-            const canRestart = this.ws && this.state.gameEnded && !this.state.waitingForRestart;
+            // 게임이 시작되었거나 끝났을 때 다시하기 가능 (대기 중이 아닌 경우)
+            const canRestart = this.ws && (this.state.gameStarted || this.state.gameEnded) && !this.state.waitingForRestart;
             restartButton.disabled = !canRestart;
             restartButton.style.opacity = canRestart ? '1' : '0.5';
 
@@ -1194,8 +1201,9 @@ class OmokGameClient {
             return;
         }
 
-        if (!this.state.gameEnded) {
-            this.showModal('알림', '게임이 진행 중입니다. 게임이 끝난 후 재시작할 수 있습니다.', [
+        // 게임이 시작되지 않았다면 재시작 불가
+        if (!this.state.gameStarted) {
+            this.showModal('알림', '게임이 시작되지 않았습니다.', [
                 { text: '확인', class: 'primary', onclick: () => this.hideModal() }
             ]);
             return;
@@ -1371,10 +1379,10 @@ class OmokGameClient {
     handleRestartRequest(data) {
         const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
 
-        if (data.is_requester) {
-            this.showModal('게임 재시작 요청', '상대방에게 재시작 요청을 보냈습니다. 응답을 기다리는 중...', [
-                { text: '확인', class: 'primary', onclick: () => this.hideModal() }
-            ]);
+        if (data.isRequester) {
+            // 요청자에게는 모달 대신 토스트로 알림
+            this.showToast('재시작 요청', '상대방에게 재시작 요청을 보냈습니다.', 'info', 3000);
+            this.updateUI(); // 버튼 상태 업데이트
         } else {
             this.showModal('게임 재시작 요청',
                 `${requesterName}님이 게임 재시작을 요청했습니다.<br>재시작하시겠습니까?`, [
@@ -1410,6 +1418,7 @@ class OmokGameClient {
 
     handleRestartAccepted(data) {
         this.state.gameEnded = false;
+        this.state.gameStarted = true;
         this.state.waitingForRestart = false;
         this.state.lastMove = null;
         this.state.winningLine = null;
