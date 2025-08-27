@@ -1202,10 +1202,21 @@ class OmokGameClient {
 
         const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
         if (myPlayer && this.state.gameState.currentPlayer === myPlayer.color) {
-            this.showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.', [
+            this.showModal('알림', '자신의 턴에는 무르기를 요청할 수 없습니다.<br>상대방 차례일 때만 무르기를 요청할 수 있습니다.', [
                 { text: '확인', class: 'primary', onclick: () => this.hideModal() }
             ]);
             return;
+        }
+
+        // 마지막 수가 상대방의 수인지 확인 (추가 검증)
+        if (this.state.moveHistory && this.state.moveHistory.length > 0) {
+            const lastMove = this.state.moveHistory[this.state.moveHistory.length - 1];
+            if (lastMove.player === myPlayer.color) {
+                this.showModal('알림', '자신의 마지막 수는 무를 수 없습니다.<br>상대방의 마지막 수만 무르기 요청할 수 있습니다.', [
+                    { text: '확인', class: 'primary', onclick: () => this.hideModal() }
+                ]);
+                return;
+            }
         }
 
         this.state.waitingForUndo = true;

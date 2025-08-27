@@ -341,17 +341,48 @@ class WebSocketHandler:
             return
 
         requester_player_number = message["from"]
+
+        # 요청자의 세션 ID 확인
+        requester_session_id = room_manager.get_session_id_by_websocket(websocket)
+        if not requester_session_id:
+            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
+            return
+
+        # 요청자 플레이어 정보 확인
+        omok_manager = room_manager.get_game_manager(GameType.OMOK)
+        requester_player = omok_manager.find_player_by_session(
+            room, requester_session_id
+        )
+        if not requester_player:
+            await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다.")
+            return
+
+        # 무르기 요청 검증: 자신의 턴에는 무르기 요청할 수 없음
+        if requester_player.color == room.game_state["current_player"]:
+            await self._send_error(websocket, "자신의 턴에는 무르기를 요청할 수 없습니다.")
+            return
+
+        # 마지막 수가 요청자 본인의 수인지 확인
+        if len(room.move_history) > 0:
+            last_move = room.move_history[-1]
+            if last_move.player == requester_player.color:
+                await self._send_error(websocket, "자신의 마지막 수는 무를 수 없습니다.")
+                return
+
         connections = room_manager.get_room_connections(room_id)
 
         # 무르기 요청자 정보를 방에 저장 (응답 처리 시 사용)
         room.undo_requests["requester"] = requester_player_number
         room.undo_requests["requester_websocket"] = websocket
+        room.undo_requests["requester_session_id"] = requester_session_id
 
         # 각 플레이어에게 다른 메시지 전송
         for ws in connections:
             try:
-                # 요청자에게는 대기 메시지
-                if ws == websocket:  # 요청자
+                # 각 웹소켓의 세션 ID 확인
+                ws_session_id = room_manager.get_session_id_by_websocket(ws)
+
+                if ws_session_id == requester_session_id:  # 요청자
                     waiting_response = WebSocketMessage(
                         type=MessageType.UNDO_REQUEST,
                         data={
@@ -379,6 +410,18 @@ class WebSocketHandler:
         """무르기 응답 처리."""
         room = room_manager.get_room(room_id)
         if not room:
+            return
+
+        # 응답자의 세션 ID 확인
+        responder_session_id = room_manager.get_session_id_by_websocket(websocket)
+        if not responder_session_id:
+            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
+            return
+
+        # 요청자가 자신의 무르기 요청에 응답하는 것을 방지
+        requester_session_id = room.undo_requests.get("requester_session_id")
+        if responder_session_id == requester_session_id:
+            await self._send_error(websocket, "자신의 무르기 요청에는 응답할 수 없습니다.")
             return
 
         if message["accepted"] and len(room.move_history) > 0:

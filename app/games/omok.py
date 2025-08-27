@@ -83,15 +83,18 @@ class OmokGame:
         if not move_history:
             return False
 
+        # 무를 수의 플레이어 저장
+        undone_move_player = move_history[-1].player
         move_history.pop()  # 마지막 이동 제거
 
         if move_history:
-            # 이전 상태로 복원
+            # 이전 보드 상태로 복원
             prev_state = move_history[-1]
             game_state.board = [row[:] for row in prev_state.board_state]
-            game_state.current_player = prev_state.player
+            # 턴은 무른 수를 둔 플레이어에게 다시 부여 (재기회)
+            game_state.current_player = undone_move_player
         else:
-            # 처음 상태로 복원
+            # 처음 상태로 복원 (첫 수를 무른 경우)
             game_state.board = [[0 for _ in range(15)] for _ in range(15)]
             game_state.current_player = 1
 
