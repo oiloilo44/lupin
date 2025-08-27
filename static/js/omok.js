@@ -15,9 +15,9 @@ class OmokGameClient {
         this.state = {
             gameState: initialGameState || {
                 board: Array(15).fill(null).map(() => Array(15).fill(0)),
-                currentPlayer: 1
+                current_player: 1
             },
-            myPlayerNumber: playerData ? playerData.playerNumber : null,
+            myPlayerNumber: playerData ? playerData.player_number : null,
             players: [],
             gameEnded: false,
             gameStarted: false,
@@ -306,7 +306,7 @@ class OmokGameClient {
             this.saveGameSession({
                 nickname: this.nickname,
                 sessionId: this.sessionId,
-                playerNumber: this.state.myPlayerNumber,
+                player_number: this.state.myPlayerNumber,
                 roomId: this.roomId,
                 joinedAt: Date.now()
             });
@@ -412,17 +412,17 @@ class OmokGameClient {
         }
 
         // 마우스 오버 미리보기 (데스크톱용)
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (this.state.hoverPosition && !this.state.gameEnded && this.state.players.length === 2 &&
-            myPlayer && this.state.gameState.currentPlayer === myPlayer.color && !this.state.previewStone) {
+            myPlayer && this.state.gameState.current_player === myPlayer.color && !this.state.previewStone) {
             const [hx, hy] = this.state.hoverPosition;
             if (this.state.gameState.board[hy][hx] === 0) {
                 const stoneRadius = Math.max(8, cellSize * 0.4);
                 this.ctx.beginPath();
                 this.ctx.arc(margin + hx * cellSize, margin + hy * cellSize, stoneRadius, 0, 2 * Math.PI);
-                this.ctx.fillStyle = this.state.gameState.currentPlayer === 1 ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)';
+                this.ctx.fillStyle = this.state.gameState.current_player === 1 ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)';
                 this.ctx.fill();
-                this.ctx.strokeStyle = this.state.gameState.currentPlayer === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(51, 51, 51, 0.5)';
+                this.ctx.strokeStyle = this.state.gameState.current_player === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(51, 51, 51, 0.5)';
                 this.ctx.lineWidth = Math.max(1, cellSize / 30);
                 this.ctx.stroke();
             }
@@ -504,9 +504,9 @@ class OmokGameClient {
 
     // 마우스 호버 처리
     handleHover(e) {
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (!this.ws || this.state.players.length < 2 || !myPlayer ||
-            this.state.gameState.currentPlayer !== myPlayer.color || this.state.gameEnded) {
+            this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             this.state.hoverPosition = null;
             this.drawBoard();
             return;
@@ -636,9 +636,9 @@ class OmokGameClient {
         }
 
         e.preventDefault();
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (!this.ws || this.state.players.length < 2 || !myPlayer ||
-            this.state.gameState.currentPlayer !== myPlayer.color || this.state.gameEnded) {
+            this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             return;
         }
 
@@ -816,7 +816,7 @@ class OmokGameClient {
     }
 
     handleGameUpdate(data) {
-        const previousPlayer = this.state.gameState.currentPlayer;
+        const previousPlayer = this.state.gameState.current_player;
         this.state.gameState = data.game_state;
 
         if (data.lastMove) {
@@ -836,7 +836,7 @@ class OmokGameClient {
         this.updateUndoButton();
 
         // 턴이 바뀌었을 때 UI 업데이트 및 턴 표시
-        if (previousPlayer !== this.state.gameState.currentPlayer) {
+        if (previousPlayer !== this.state.gameState.current_player) {
             // UI 업데이트가 완료된 후 턴 표시
             setTimeout(() => {
                 this.showTurnIndicator();
@@ -927,8 +927,8 @@ class OmokGameClient {
         const playerList = document.getElementById('playerList');
         if (playerList) {
             playerList.innerHTML = this.state.players.map(p => {
-                const isCurrentPlayer = p.color === this.state.gameState.currentPlayer;
-                const isMe = p.playerNumber === this.state.myPlayerNumber;
+                const isCurrentPlayer = p.color === this.state.gameState.current_player;
+                const isMe = p.player_number === this.state.myPlayerNumber;
                 let itemClass = 'player-item';
                 if (isCurrentPlayer) itemClass += ' active';
                 if (isMe && isCurrentPlayer) itemClass += ' my-turn';
@@ -950,9 +950,9 @@ class OmokGameClient {
         if (currentTurn) {
             // 플레이어가 2명이고 게임이 진행 중일 때만 표시
             if (this.state.players.length === 2 && !this.state.gameEnded) {
-                const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.currentPlayer);
+                const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.current_player);
                 if (currentPlayer) {
-                    const isMyTurn = currentPlayer.playerNumber === this.state.myPlayerNumber;
+                    const isMyTurn = currentPlayer.player_number === this.state.myPlayerNumber;
                     currentTurn.innerHTML = `
                         <div class="player-item ${isMyTurn ? 'my-turn' : 'active'}">
                             <div class="player-name">${this.escapeHtml(currentPlayer.nickname)}${isMyTurn ? ' (나)' : ''}</div>
@@ -1223,7 +1223,7 @@ class OmokGameClient {
     updateUndoButton() {
         const undoButton = document.getElementById('undoButton');
         if (undoButton) {
-            const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
             // 무르기는 자신의 턴과 상대방 턴 모두에서 가능
             // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
             // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
@@ -1326,13 +1326,13 @@ class OmokGameClient {
         // 플레이어 수와 게임 상태 확인
         if (this.state.players.length !== 2 || this.state.gameEnded) return;
 
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
         if (!myPlayer || this.state.myPlayerNumber === null || this.state.myPlayerNumber === undefined) return;
 
-        const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.currentPlayer);
+        const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.current_player);
         if (!currentPlayer) return;
 
-        const isMyTurn = this.state.gameState.currentPlayer === myPlayer.color;
+        const isMyTurn = this.state.gameState.current_player === myPlayer.color;
 
         if (isMyTurn) {
             this.showToast('당신의 차례', '돌을 놓을 위치를 선택하세요', 'info', 3000);
@@ -1347,7 +1347,7 @@ class OmokGameClient {
         } else {
             // 상대방 턴일 때도 알림 표시
             const currentPlayerName = currentPlayer.nickname;
-            const stoneColor = this.state.gameState.currentPlayer === 1 ? '흑돌' : '백돌';
+            const stoneColor = this.state.gameState.current_player === 1 ? '흑돌' : '백돌';
             this.showToast('상대방 차례', `${currentPlayerName}님(${stoneColor})의 차례입니다`, 'info', 3000);
         }
     }
@@ -1381,7 +1381,7 @@ class OmokGameClient {
             return;
         }
 
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
 
         // 무르기 가능한 상황인지 확인 (자신/상대방 수 모두 무르기 가능)
         // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
@@ -1534,7 +1534,7 @@ class OmokGameClient {
 
     // 나머지 핸들러들 (간소화된 버전)
     handleRestartRequest(data) {
-        const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
+        const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
 
         if (data.isRequester) {
             // 요청자에게는 모달 대신 토스트로 알림
@@ -1609,7 +1609,7 @@ class OmokGameClient {
     }
 
     handleUndoRequest(data) {
-        const requesterName = this.state.players.find(p => p.playerNumber === data.from)?.nickname || '상대방';
+        const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
 
         if (data.isRequester) {
             // 요청자에게는 토스트 메시지로만 알림 (팝업 없음)
@@ -1617,7 +1617,7 @@ class OmokGameClient {
         } else {
             // 무르기 대상 수 확인 (마지막 수가 누구 것인지)
             const lastMove = this.state.moveHistory?.[this.state.moveHistory.length - 1];
-            const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
+            const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
             let message;
 
             if (lastMove && myPlayer && lastMove.player === myPlayer.color) {
@@ -1686,8 +1686,8 @@ class OmokGameClient {
 
     // 모바일 터치 미리보기 시스템
     showPreviewStone(x, y) {
-        const myPlayer = this.state.players.find(p => p.playerNumber === this.state.myPlayerNumber);
-        if (!myPlayer || this.state.gameState.currentPlayer !== myPlayer.color ||
+        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        if (!myPlayer || this.state.gameState.current_player !== myPlayer.color ||
             this.state.gameEnded || this.state.gameState.board[y][x] !== 0) {
             return false;
         }
