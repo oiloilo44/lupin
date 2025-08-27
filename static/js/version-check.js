@@ -3,7 +3,7 @@
  */
 
 class VersionChecker {
-    constructor(currentVersion, checkInterval = 30000) {
+    constructor(currentVersion, checkInterval = 60000) {
         this.currentVersion = currentVersion;
         this.checkInterval = checkInterval;
         this.isCheckingVersion = false;
@@ -66,8 +66,8 @@ class VersionChecker {
                 <strong>새 버전이 있습니다</strong>
                 <p>페이지를 새로고침하여 최신 기능을 이용하세요.</p>
                 <div class="update-buttons">
-                    <button onclick="location.reload()" class="btn-reload">새로고침</button>
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="btn-dismiss">나중에</button>
+                    <button class="btn-reload">새로고침</button>
+                    <button class="btn-dismiss">나중에</button>
                 </div>
             </div>
         `;
@@ -148,9 +148,14 @@ class VersionChecker {
             }
         }, 1000);
 
-        // 사용자가 버튼을 클릭하면 카운트다운 취소
-        notification.addEventListener('click', () => {
+        // 버튼 이벤트 리스너 추가
+        notification.querySelector('.btn-reload').addEventListener('click', () => {
+            location.reload();
+        });
+
+        notification.querySelector('.btn-dismiss').addEventListener('click', () => {
             clearInterval(countdownInterval);
+            notification.remove();
         });
     }
 }

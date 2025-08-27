@@ -18,10 +18,8 @@ class CustomStaticFiles(StaticFiles):
 
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)
-        # 정적 파일 캐시 무효화
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
+        # 정적 파일에 대해 긴 캐시 유효기간 설정 (버전 관리와 함께 사용)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
 
