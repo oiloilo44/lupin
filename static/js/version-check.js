@@ -139,8 +139,8 @@ class VersionChecker {
 
         document.body.appendChild(notification);
 
-        // 5초 후 자동 새로고침 카운트다운
-        let countdown = 5;
+        // 15초 후 자동 새로고침 카운트다운 (사용자에게 충분한 시간 제공)
+        let countdown = 15;
         const countdownInterval = setInterval(() => {
             countdown--;
             if (countdown <= 0) {

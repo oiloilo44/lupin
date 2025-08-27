@@ -1,8 +1,11 @@
 """애플리케이션 버전 관리."""
 import hashlib
+import logging
 import time
 from pathlib import Path
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
 def get_app_version() -> str:
@@ -42,11 +45,11 @@ def get_static_file_version(file_path: str) -> str:
 
     except (IOError, FileNotFoundError) as e:
         # 구체적인 예외 처리로 변경
-        print(f"파일 버전 생성 실패 {file_path}: {e}")
+        logger.warning(f"파일 버전 생성 실패 {file_path}: {e}")
         return get_app_version()
     except Exception as e:
         # 예상하지 못한 오류
-        print(f"예상치 못한 오류 {file_path}: {e}")
+        logger.error(f"예상치 못한 오류 {file_path}: {e}")
         return get_app_version()
 
 
@@ -67,7 +70,3 @@ def clear_version_cache() -> None:
 def get_current_app_version() -> str:
     """현재 앱 버전 반환 (동적)."""
     return get_app_version()
-
-
-# 전역 버전
-APP_VERSION = get_app_version()
