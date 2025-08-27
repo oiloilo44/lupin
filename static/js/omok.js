@@ -787,11 +787,11 @@ class OmokGameClient {
         }
 
         // 무브 히스토리 복원
-        if (data.moveHistory) {
-            this.state.moveHistory = data.moveHistory;
+        if (data.move_history) {
+            this.state.moveHistory = data.move_history;
             // 마지막 수 복원
-            if (data.moveHistory.length > 0) {
-                const lastMoveEntry = data.moveHistory[data.moveHistory.length - 1];
+            if (data.move_history.length > 0) {
+                const lastMoveEntry = data.move_history[data.move_history.length - 1];
                 this.state.lastMove = lastMoveEntry.move;
             }
         }
@@ -820,7 +820,7 @@ class OmokGameClient {
         this.state.gameState = data.game_state;
 
         if (data.lastMove) {
-            this.state.lastMove = data.lastMove;
+            this.state.lastMove = data.last_move;
 
             // moveHistory에 새로운 수 추가
             const newMoveEntry = {
@@ -848,7 +848,7 @@ class OmokGameClient {
         this.state.gameEnded = true;
         this.state.gameState = data.game_state;
         if (data.lastMove) {
-            this.state.lastMove = data.lastMove;
+            this.state.lastMove = data.last_move;
         }
         if (data.winningLine) {
             this.state.winningLine = data.winningLine;
@@ -1536,7 +1536,7 @@ class OmokGameClient {
     handleRestartRequest(data) {
         const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
 
-        if (data.isRequester) {
+        if (data.is_requester) {
             // 요청자에게는 모달 대신 토스트로 알림
             this.showToast('재시작 요청', '상대방에게 재시작 요청을 보냈습니다.', 'info', 3000);
             this.updateUI(); // 버튼 상태 업데이트
@@ -1611,7 +1611,7 @@ class OmokGameClient {
     handleUndoRequest(data) {
         const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
 
-        if (data.isRequester) {
+        if (data.is_requester) {
             // 요청자에게는 토스트 메시지로만 알림 (팝업 없음)
             this.showToast('무르기 요청', '상대방에게 무르기 요청을 보냈습니다. 응답을 기다리는 중...', 'info');
         } else {
