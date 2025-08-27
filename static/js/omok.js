@@ -181,9 +181,9 @@ class OmokGameClient {
                 if (isReconnect) {
                     const message = {
                         type: 'reconnect',
-                        sessionId: this.sessionId
+                        session_id: this.sessionId
                     };
-                    this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                    this.ws.send(JSON.stringify(message));
                 }
             };
 
@@ -651,9 +651,9 @@ class OmokGameClient {
             const message = {
                 type: 'move',
                 move: {x, y},
-                sessionId: this.sessionId
+                session_id: this.sessionId
             };
-            this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+            this.ws.send(JSON.stringify(message));
         }
     }
 
@@ -661,8 +661,8 @@ class OmokGameClient {
     handleWebSocketMessage(event) {
         const serverData = JSON.parse(event.data);
 
-        // 서버의 snake_case 데이터를 camelCase로 변환
-        const data = humps.camelizeKeys(serverData);
+        // 서버의 snake_case 데이터를 그대로 사용 (필요시 개별 변환)
+        const data = serverData;
 
         // 채팅 메시지 처리 (원본 서버 데이터 사용)
         if (typeof handleChatWebSocketMessage === 'function') {
@@ -716,8 +716,8 @@ class OmokGameClient {
         this.state.players = data.room.players;
 
         // 게임 상태 업데이트
-        if (data.room.gameState) {
-            this.state.gameState = data.room.gameState;
+        if (data.room.game_state) {
+            this.state.gameState = data.room.game_state;
         }
 
         // myPlayerNumber 설정 (항상 확인)
@@ -726,11 +726,11 @@ class OmokGameClient {
             if (currentNickname) {
                 const myPlayer = this.state.players.find(p => p.nickname === currentNickname);
                 if (myPlayer) {
-                    this.state.myPlayerNumber = myPlayer.playerNumber;
+                    this.state.myPlayerNumber = myPlayer.player_number;
                     this.saveGameSession({
                         nickname: currentNickname,
                         sessionId: this.sessionId,
-                        playerNumber: this.state.myPlayerNumber,
+                        player_number: this.state.myPlayerNumber,
                         color: myPlayer.color,
                         joinedAt: Date.now()
                     });
@@ -759,8 +759,8 @@ class OmokGameClient {
     }
 
     handleReconnectSuccess(data) {
-        if (data.room && data.room.gameState) {
-            this.state.gameState = data.room.gameState;
+        if (data.room && data.room.game_state) {
+            this.state.gameState = data.room.game_state;
         }
         if (data.room && data.room.players) {
             this.state.players = data.room.players;
@@ -770,7 +770,7 @@ class OmokGameClient {
             }
         }
         if (data.player) {
-            this.state.myPlayerNumber = data.player.playerNumber;
+            this.state.myPlayerNumber = data.player.player_number;
         }
         if (data.room && data.room.gameEnded !== undefined) {
             this.state.gameEnded = data.room.gameEnded;
@@ -782,7 +782,7 @@ class OmokGameClient {
         // 채팅 히스토리 복원
         if (data.room && data.room.chatHistory && typeof displayChatMessage === 'function') {
             data.room.chatHistory.forEach(msg => {
-                displayChatMessage(msg.nickname, msg.message, msg.timestamp, msg.playerNumber);
+                displayChatMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
             });
         }
 
@@ -817,7 +817,7 @@ class OmokGameClient {
 
     handleGameUpdate(data) {
         const previousPlayer = this.state.gameState.currentPlayer;
-        this.state.gameState = data.gameState;
+        this.state.gameState = data.game_state;
 
         if (data.lastMove) {
             this.state.lastMove = data.lastMove;
@@ -846,7 +846,7 @@ class OmokGameClient {
 
     handleGameEnd(data) {
         this.state.gameEnded = true;
-        this.state.gameState = data.gameState;
+        this.state.gameState = data.game_state;
         if (data.lastMove) {
             this.state.lastMove = data.lastMove;
         }
@@ -1202,9 +1202,9 @@ class OmokGameClient {
                 const message = {
                     type: 'join',
                     nickname: nickname,
-                    sessionId: this.sessionId
+                    session_id: this.sessionId
                 };
-                this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                this.ws.send(JSON.stringify(message));
 
                 this.saveGameSession({
                     nickname: nickname,
@@ -1370,9 +1370,9 @@ class OmokGameClient {
         const message = {
             type: 'restart_request',
             from: this.state.myPlayerNumber,
-            sessionId: this.sessionId
+            session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+        this.ws.send(JSON.stringify(message));
     }
 
     // 무르기 요청
@@ -1391,9 +1391,9 @@ class OmokGameClient {
         const message = {
             type: 'undo_request',
             from: this.state.myPlayerNumber,
-            sessionId: this.sessionId
+            session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+        this.ws.send(JSON.stringify(message));
     }
 
     // 로컬 스토리지 관리
@@ -1478,7 +1478,7 @@ class OmokGameClient {
     continueExistingGame() {
         if (this.pendingSessionData) {
             this.state.myNickname = this.pendingSessionData.nickname;
-            this.state.myPlayerNumber = this.pendingSessionData.playerNumber;
+            this.state.myPlayerNumber = this.pendingSessionData.player_number;
 
             this.connectWebSocket();
 
@@ -1486,9 +1486,9 @@ class OmokGameClient {
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                     const message = {
                         type: 'reconnect',
-                        sessionId: this.pendingSessionData.sessionId
+                        session_id: this.pendingSessionData.sessionId
                     };
-                    this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                    this.ws.send(JSON.stringify(message));
                 } else {
                     setTimeout(waitForConnection, 100);
                 }
@@ -1551,9 +1551,9 @@ class OmokGameClient {
                         const message = {
                             type: 'restart_response',
                             accepted: false,
-                            sessionId: this.sessionId
+                            session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                        this.ws.send(JSON.stringify(message));
                     }
                 },
                 {
@@ -1564,9 +1564,9 @@ class OmokGameClient {
                         const message = {
                             type: 'restart_response',
                             accepted: true,
-                            sessionId: this.sessionId
+                            session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                        this.ws.send(JSON.stringify(message));
                     }
                 }
             ]);
@@ -1581,7 +1581,7 @@ class OmokGameClient {
         this.state.winningLine = null;
         this.state.winnerNumber = null;
         this.state.gameStats = { moves: 0, startTime: Date.now() };
-        this.state.gameState = data.gameState;
+        this.state.gameState = data.game_state;
         this.state.moveHistory = []; // 게임 재시작 시 히스토리 초기화
 
         if (data.players) {
@@ -1637,9 +1637,9 @@ class OmokGameClient {
                         const message = {
                             type: 'undo_response',
                             accepted: false,
-                            sessionId: this.sessionId
+                            session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                        this.ws.send(JSON.stringify(message));
                     }
                 },
                 {
@@ -1650,9 +1650,9 @@ class OmokGameClient {
                         const message = {
                             type: 'undo_response',
                             accepted: true,
-                            sessionId: this.sessionId
+                            session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+                        this.ws.send(JSON.stringify(message));
                     }
                 }
             ]);
@@ -1660,7 +1660,7 @@ class OmokGameClient {
     }
 
     handleUndoAccepted(data) {
-        this.state.gameState = data.gameState;
+        this.state.gameState = data.game_state;
         this.recalculateMoveCount();
         this.state.waitingForUndo = false;
         this.state.lastMove = null;
@@ -1740,9 +1740,9 @@ class OmokGameClient {
         const message = {
             type: 'move',
             move: {x, y},
-            sessionId: this.sessionId
+            session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(humps.decamelizeKeys(message)));
+        this.ws.send(JSON.stringify(message));
 
         // 미리보기 정리
         this.cancelMove();
