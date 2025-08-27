@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from .room_manager import room_manager
 from .session_manager import session_manager
+from .version import APP_VERSION, add_version_to_url
 from .websocket_handler import websocket_handler
 
 # 라우터 설정
@@ -17,7 +18,14 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/", response_class=HTMLResponse)
 async def main_page(request: Request):
     """메인 페이지"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "add_version_to_url": add_version_to_url,
+            "app_version": APP_VERSION,
+        },
+    )
 
 
 @router.get("/slither", response_class=HTMLResponse)
@@ -102,6 +110,8 @@ async def omok_room(request: Request, response: Response, room_id: str):
         "player_data": player_data,
         "room_status": room.status.value if room else "waiting",
         "game_state": room.game_state if room else None,
+        "add_version_to_url": add_version_to_url,
+        "app_version": APP_VERSION,
     }
 
     return templates.TemplateResponse("omok.html", context)

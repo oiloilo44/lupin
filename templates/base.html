@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Excel - Microsoft Excel{% endblock %}</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/components.css">
-    <link rel="stylesheet" href="/static/css/modals.css">
-    <link rel="stylesheet" href="/static/css/notifications.css">
-    <link rel="stylesheet" href="/static/css/responsive.css">
+    <link rel="icon" type="image/png" href="{{ add_version_to_url('/static/favicon.png') }}">
+    <link rel="stylesheet" href="{{ add_version_to_url('/static/css/base.css') }}">
+    <link rel="stylesheet" href="{{ add_version_to_url('/static/css/components.css') }}">
+    <link rel="stylesheet" href="{{ add_version_to_url('/static/css/modals.css') }}">
+    <link rel="stylesheet" href="{{ add_version_to_url('/static/css/notifications.css') }}">
+    <link rel="stylesheet" href="{{ add_version_to_url('/static/css/responsive.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -72,9 +72,18 @@
     <div class="global-toast-container" id="globalToastContainer"></div>
 
     <script src="https://unpkg.com/humps@2.0.1/humps.js"></script>
-    <script src="/static/js/base.js"></script>
-    <script src="/static/js/modal.js"></script>
-    <script src="/static/js/notifications.js"></script>
+    <script src="{{ add_version_to_url('/static/js/base.js') }}"></script>
+    <script src="{{ add_version_to_url('/static/js/modal.js') }}"></script>
+    <script src="{{ add_version_to_url('/static/js/notifications.js') }}"></script>
+    <script src="{{ add_version_to_url('/static/js/version-check.js') }}"></script>
+
+    <script>
+        // 버전 체크 시작
+        if (typeof VersionChecker !== 'undefined') {
+            const versionChecker = new VersionChecker('{{ app_version }}', 30000);
+            versionChecker.start();
+        }
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>
