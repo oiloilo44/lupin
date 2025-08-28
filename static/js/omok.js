@@ -1605,6 +1605,7 @@ class OmokGameClient {
 
     handleRestartRejected() {
         this.state.waitingForRestart = false;
+        this.updateRestartButton(); // 버튼 상태 업데이트 추가
         this.showModal('알림', '상대방이 재시작을 거부했습니다.', [
             { text: '확인', class: 'primary', onclick: () => this.hideModal() }
         ]);
