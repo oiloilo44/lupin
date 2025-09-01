@@ -55,12 +55,12 @@ class WebSocketHandler:
 
             session_id = message.get("session_id")
             nickname = message["nickname"]
-            
+
             # 닉네임 유효성 검증 추가
             nickname = nickname.strip()
             if not nickname or len(nickname) > 20:
                 raise ValueError("닉네임은 1-20자 사이여야 합니다")
-            if any(char in nickname for char in ['<', '>', '&', '"', "'"]):
+            if any(char in nickname for char in ["<", ">", "&", '"', "'"]):
                 raise ValueError("닉네임에 특수문자(<, >, &, \", ')는 사용할 수 없습니다")
 
             # 세션이 있으면 해당 세션으로 플레이어 추가
@@ -721,11 +721,17 @@ class WebSocketHandler:
         if len(session_id) != 36:
             return False
         # UUID 패턴 검증 (간단한 체크)
-        parts = session_id.split('-')
+        parts = session_id.split("-")
         if len(parts) != 5:
             return False
         # 각 부분의 길이 체크
-        if len(parts[0]) != 8 or len(parts[1]) != 4 or len(parts[2]) != 4 or len(parts[3]) != 4 or len(parts[4]) != 12:
+        if (
+            len(parts[0]) != 8
+            or len(parts[1]) != 4
+            or len(parts[2]) != 4
+            or len(parts[3]) != 4
+            or len(parts[4]) != 12
+        ):
             return False
         # 16진수 문자만 포함하는지 체크
         try:
