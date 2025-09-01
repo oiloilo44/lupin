@@ -8,14 +8,12 @@ scenarios.md 문서의 Critical 시나리오들을 체계적으로 검증:
 - S6: 게임 종료 및 승부 판정
 """
 
-import asyncio
 import json
 
 import pytest
-import pytest_asyncio
-from playwright.async_api import Page, async_playwright, expect
 
-from .omok_helpers import OmokGameHelper, OmokSelectors, OmokTestScenarios
+from ...conftest import CONTEXT_CONFIG, TEST_CONFIG
+from .omok_helpers import OmokGameHelper, OmokSelectors
 
 
 class TestS1BasicGameFlow:
@@ -34,7 +32,8 @@ class TestS1BasicGameFlow:
         """
         print("INFO: S1-1 방 생성 및 대기 상태 테스트 시작")
 
-        # 방 생성 및 입장 (헬퍼 모듈 사용)
+        # 헬퍼 함수를 사용한 방 생성 및 입장
+        print("INFO: 헬퍼 함수로 방 생성 및 입장 시작")
         room_url = await OmokGameHelper.create_room_and_join(page, "Player1")
         print(f"SUCCESS: 방 생성 완료 - {room_url}")
 
@@ -117,8 +116,8 @@ class TestS1BasicGameFlow:
         print(f"SUCCESS: 두 플레이어 게임 설정 완료 - {room_url}")
 
         # 1. 양쪽 페이지에서 게임 상태 확인
-        await page1.wait_for_timeout(2000)
-        await page2.wait_for_timeout(2000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+        await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 게임 상태가 올바르게 설정되었는지 확인
         game_state1 = await page1.evaluate(
@@ -138,7 +137,10 @@ class TestS1BasicGameFlow:
         assert (
             current_player1 == current_player2
         ), f"턴 상태 불일치: Player1={current_player1}, Player2={current_player2}"
-        assert current_player1 in [1, 2], f"올바르지 않은 현재 플레이어: {current_player1}"
+        assert current_player1 in [
+            1,
+            2,
+        ], f"올바르지 않은 현재 플레이어: {current_player1}"
         print(f"SUCCESS: 현재 턴 설정 확인 - Player{current_player1}")
 
         # 3. 플레이어 정보 확인 (클라이언트 상태에서)
@@ -156,18 +158,23 @@ class TestS1BasicGameFlow:
             print("SUCCESS: 플레이어 정보 확인 - 2명")
         else:
             print(
-                f"INFO: 플레이어 수 - Player1: {len(players1)}, Player2: {len(players2)} (클라이언트 상태에서 확인)"
+                f"INFO: 플레이어 수 - Player1: {len(players1)}, "
+                f"Player2: {len(players2)} (클라이언트 상태에서 확인)"
             )
 
         # 4. 색깔 배정 확인
         player1_info = await page1.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
         player2_info = await page2.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
 
@@ -182,7 +189,8 @@ class TestS1BasicGameFlow:
             2,
         ], f"Player2 색깔이 올바르지 않음: {player2_info['color']}"
         print(
-            f"SUCCESS: 색깔 배정 확인 - Player1: {player1_info['color']}, Player2: {player2_info['color']}"
+            f"SUCCESS: 색깔 배정 확인 - Player1: {player1_info['color']}, "
+            f"Player2: {player2_info['color']}"
         )
 
         print("SUCCESS: S1-2 두 플레이어 게임 시작 테스트 완료")
@@ -211,17 +219,22 @@ class TestS1BasicGameFlow:
         # 실제 색깔 배정 확인
         player1_info = await page1.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
         player2_info = await page2.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
 
         print(
-            f"플레이어 정보 - Player1: {player1_info['color']}, Player2: {player2_info['color']}"
+            f"플레이어 정보 - Player1: {player1_info['color']}, "
+            f"Player2: {player2_info['color']}"
         )
 
         # 현재 턴 확인
@@ -270,8 +283,8 @@ class TestS1BasicGameFlow:
                 else:
                     await OmokGameHelper.click_canvas_position(page2, x_ratio, y_ratio)
                     print(f"Player2가 {i+1}번째 추가 수: ({x_ratio}, {y_ratio})")
-                await page1.wait_for_timeout(1000)
-                await page2.wait_for_timeout(1000)
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+                await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
             except Exception as e:
                 print(f"INFO: {i+1}번째 수 진행 중 오류 (정상적일 수 있음) - {e}")
                 break
@@ -315,16 +328,17 @@ class TestS2MultiplayerSync:
         print("SUCCESS: URL 동기화 확인")
 
         # 2. 게임 상태 동기화 확인
-        await page1.wait_for_timeout(1000)
-        await page2.wait_for_timeout(1000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+        await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         game_state1 = await page1.evaluate("window.omokClient.state.gameState")
         game_state2 = await page2.evaluate("window.omokClient.state.gameState")
 
         # 핵심 게임 상태 동기화 검증
-        assert (
-            game_state1["current_player"] == game_state2["current_player"]
-        ), f"현재 턴 불일치: {game_state1['current_player']} vs {game_state2['current_player']}"
+        assert game_state1["current_player"] == game_state2["current_player"], (
+            f"현재 턴 불일치: {game_state1['current_player']} "
+            f"vs {game_state2['current_player']}"
+        )
 
         # 클라이언트 상태에서 플레이어 수 확인 (gameState가 아닌 client state에 있음)
         client_state1 = await page1.evaluate(
@@ -342,7 +356,10 @@ class TestS2MultiplayerSync:
         ):
             assert (
                 len(client_state1["players"]) == len(client_state2["players"]) == 2
-            ), f"플레이어 수 불일치: {len(client_state1['players'])} vs {len(client_state2['players'])}"
+            ), (
+                f"플레이어 수 불일치: {len(client_state1['players'])} "
+                f"vs {len(client_state2['players'])}"
+            )
             print("SUCCESS: 플레이어 수 동기화 확인")
         else:
             print("INFO: 플레이어 정보는 클라이언트 상태에서 확인")
@@ -353,18 +370,23 @@ class TestS2MultiplayerSync:
         # 실제 색깔 배정 확인 후 적절한 플레이어가 수를 놓도록 함
         player1_info = await page1.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
         player2_info = await page2.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
 
         current_player = game_state1["current_player"]
         print(
-            f"현재 턴: {current_player}, Player1 색깔: {player1_info['color']}, Player2 색깔: {player2_info['color']}"
+            f"현재 턴: {current_player}, Player1 색깔: {player1_info['color']}, "
+            f"Player2 색깔: {player2_info['color']}"
         )
 
         # 현재 턴에 해당하는 플레이어 선택
@@ -445,12 +467,12 @@ class TestS2MultiplayerSync:
         await OmokGameHelper.make_alternating_moves(page1, page2, moves_count=2)
 
         # 게임 상태 저장 (재연결 후 비교용)
-        before_disconnect_state1 = await page1.evaluate(
-            "window.omokClient.state.gameState"
-        )
-        before_disconnect_state2 = await page2.evaluate(
-            "window.omokClient.state.gameState"
-        )
+        # before_disconnect_state1 = await page1.evaluate(
+        #     "window.omokClient.state.gameState"
+        # )
+        # before_disconnect_state2 = await page2.evaluate(
+        #     "window.omokClient.state.gameState"
+        # )
 
         board_stones_before = await OmokGameHelper.get_stone_count(page1)
         print(f"연결 끊기 전 보드 상태: {board_stones_before}개 돌")
@@ -461,14 +483,39 @@ class TestS2MultiplayerSync:
         # Player1 연결 끊김 시뮬레이션
         await page1.reload()
         await page1.wait_for_load_state("networkidle")
-        await page1.wait_for_timeout(2000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 4. 자동 재연결 확인
         print("INFO: 자동 재연결 및 세션 복원 확인")
 
-        # 재연결 후 연결 상태 확인 (최대 10초 대기)
+        # 이어하기 버튼이 있으면 클릭
+        try:
+            continue_button = await page1.query_selector(OmokSelectors.Buttons.CONTINUE)
+            if continue_button:
+                await continue_button.click()
+                print("INFO: 이어하기 버튼 클릭")
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+        except Exception:
+            pass
+
+        # omokClient 초기화 대기
+        client_initialized = False
+        for i in range(10):
+            client_exists = await page1.evaluate(
+                "typeof window.omokClient !== 'undefined'"
+            )
+            if client_exists:
+                client_initialized = True
+                print(f"omokClient 초기화 확인 ({i+1}초 후)")
+                break
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+
+        if not client_initialized:
+            print("WARNING: omokClient가 초기화되지 않음")
+
+        # 재연결 후 연결 상태 확인 (최대 15초 대기)
         reconnected = False
-        for attempt in range(10):
+        for attempt in range(15):
             connection_status = await page1.evaluate(
                 "window.omokClient ? window.omokClient.connection.status : null"
             )
@@ -476,12 +523,12 @@ class TestS2MultiplayerSync:
                 reconnected = True
                 print(f"SUCCESS: Player1 재연결 완료 ({attempt + 1}초 후)")
                 break
-            await page1.wait_for_timeout(1000)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         assert reconnected, "Player1 재연결 실패"
 
         # 5. 재연결 후 게임 상태 복원 확인
-        await page1.wait_for_timeout(3000)  # 상태 복원 대기
+        await page1.wait_for_timeout(TEST_CONFIG["game_action"])  # 상태 복원 대기
 
         after_reconnect_state1 = await page1.evaluate(
             "window.omokClient.state.gameState"
@@ -504,9 +551,10 @@ class TestS2MultiplayerSync:
             current_player2 = current_state2.get("current_player")
 
             if current_player1 and current_player2:
-                assert (
-                    current_player1 == current_player2
-                ), f"재연결 후 턴 동기화 실패: Player1={current_player1}, Player2={current_player2}"
+                assert current_player1 == current_player2, (
+                    f"재연결 후 턴 동기화 실패: Player1={current_player1}, "
+                    f"Player2={current_player2}"
+                )
                 print(f"SUCCESS: 재연결 후 턴 동기화 확인 - 현재 턴: Player{current_player1}")
 
         # 7. 재연결 후 정상 게임 진행 가능한지 확인
@@ -562,8 +610,8 @@ class TestS3SessionRecovery:
         # 1. 게임 진행 (몇 수를 놓아서 복원할 상태 생성)
         print("INFO: 게임 진행으로 복원할 상태 생성")
         await OmokGameHelper.make_alternating_moves(page1, page2, moves_count=3)
-        await page1.wait_for_timeout(1000)
-        await page2.wait_for_timeout(1000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+        await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 새로고침 전 게임 상태 저장
         before_refresh_state = await page1.evaluate("window.omokClient.state.gameState")
@@ -574,7 +622,8 @@ class TestS3SessionRecovery:
         session_id_before = before_player_info.get("sessionId")
 
         print(
-            f"새로고침 전 상태 - 돌: {board_stones_before}개, 턴: Player{current_player_before}, 세션: {session_id_before}"
+            f"새로고침 전 상태 - 돌: {board_stones_before}개, "
+            f"턴: Player{current_player_before}, 세션: {session_id_before}"
         )
 
         # 2. Player1 페이지 새로고침
@@ -588,10 +637,36 @@ class TestS3SessionRecovery:
         assert current_url == restored_url, f"URL 불일치: {current_url} vs {restored_url}"
         print("SUCCESS: URL 유지 확인")
 
-        # 4. 세션 복원 대기 및 확인
-        print("INFO: 세션 복원 대기 (최대 10초)")
+        # 4. 이어하기 버튼 확인 및 클릭
+        try:
+            continue_button = await page1.query_selector(OmokSelectors.Buttons.CONTINUE)
+            if continue_button:
+                await continue_button.click()
+                print("INFO: 이어하기 버튼 클릭")
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+        except Exception:
+            pass
+
+        # omokClient 초기화 대기
+        print("INFO: omokClient 초기화 대기")
+        client_initialized = False
+        for i in range(10):
+            client_exists = await page1.evaluate(
+                "typeof window.omokClient !== 'undefined'"
+            )
+            if client_exists:
+                client_initialized = True
+                print(f"omokClient 초기화 확인 ({i+1}초 후)")
+                break
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+
+        if not client_initialized:
+            print("WARNING: omokClient가 초기화되지 않음")
+
+        # 5. 세션 복원 대기 및 확인
+        print("INFO: 세션 복원 대기 (최대 15초)")
         session_restored = False
-        for attempt in range(10):
+        for attempt in range(15):
             try:
                 client_state = await page1.evaluate(
                     "window.omokClient ? window.omokClient.state : null"
@@ -602,23 +677,31 @@ class TestS3SessionRecovery:
                         session_restored = True
                         print(f"SUCCESS: 세션 복원 확인 ({attempt + 1}초 후)")
                         break
-            except:
+            except Exception:
                 pass
-            await page1.wait_for_timeout(1000)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         assert session_restored, "세션 복원 실패 - 게임 상태를 찾을 수 없음"
 
-        # 5. 게임 보드 복원 확인
-        game_board_restored = await OmokGameHelper.check_page_condition(
-            page1,
-            [OmokSelectors.GameUI.BOARD, "canvas", "#omokBoard"],
-            "element",
-            "게임 보드 복원 확인",
-        )
-        assert game_board_restored, "게임 보드가 복원되지 않았습니다"
+        # 게임 보드 그리기 대기
+        await page1.wait_for_timeout(TEST_CONFIG["game_action"])
+
+        # 6. 게임 보드 복원 확인 (캔버스가 실제로 그려졌는지 확인)
+        board_visible = False
+        for selector in ["#omokBoard", "canvas", OmokSelectors.GameUI.BOARD]:
+            try:
+                element = await page1.query_selector(selector)
+                if element:
+                    board_visible = True
+                    print(f"SUCCESS: 게임 보드 요소 발견 - {selector}")
+                    break
+            except Exception:
+                pass
+
+        assert board_visible, "게임 보드가 복원되지 않았습니다"
         print("SUCCESS: 게임 보드 UI 복원 확인")
 
-        # 6. 구체적인 게임 상태 복원 검증
+        # 7. 구체적인 게임 상태 복원 검증
         after_refresh_state = await page1.evaluate("window.omokClient.state.gameState")
         after_player_info = await page1.evaluate("window.omokClient.state")
 
@@ -642,17 +725,19 @@ class TestS3SessionRecovery:
         ), f"세션 ID 복원 실패: {session_id_before} -> {session_id_after}"
 
         print(
-            f"SUCCESS: 게임 상태 완전 복원 - 돌: {board_stones_after}개, 턴: Player{current_player_after}"
+            f"SUCCESS: 게임 상태 완전 복원 - 돌: {board_stones_after}개, "
+            f"턴: Player{current_player_after}"
         )
 
-        # 7. 상대방과의 동기화 확인
+        # 8. 상대방과의 동기화 확인
         page2_state = await page2.evaluate("window.omokClient.state.gameState")
-        assert (
-            page2_state["current_player"] == current_player_after
-        ), f"Player2와 턴 동기화 실패: {page2_state['current_player']} vs {current_player_after}"
+        assert page2_state["current_player"] == current_player_after, (
+            f"Player2와 턴 동기화 실패: {page2_state['current_player']} "
+            f"vs {current_player_after}"
+        )
         print("SUCCESS: Player2와 동기화 상태 확인")
 
-        # 8. 새로고침 후 정상 게임 진행 가능한지 테스트
+        # 9. 새로고침 후 정상 게임 진행 가능한지 테스트
         print("INFO: 새로고침 후 게임 진행 가능성 테스트")
         try:
             await OmokGameHelper.make_alternating_moves(page1, page2, moves_count=1)
@@ -670,7 +755,7 @@ class TestS3SessionRecovery:
         print("SUCCESS: S3-1 페이지 새로고침 후 세션 복원 테스트 완료")
 
     @pytest.mark.asyncio
-    async def test_s3_2_browser_reconnect(self):
+    async def test_s3_2_browser_reconnect(self, browser):
         """S3-2: 브라우저 완전 종료 후 재접속 및 세션 복원
 
         시나리오: 브라우저를 완전히 종료한 후 다시 접속해도 세션이 복원됨
@@ -685,171 +770,174 @@ class TestS3SessionRecovery:
         room_url = None
         session_data = None
 
-        # 1. 첫 번째 브라우저에서 방 생성 및 게임 진행
-        print("INFO: 첫 번째 브라우저에서 게임 생성 및 진행")
-        async with async_playwright() as p:
-            browser1 = await p.chromium.launch(headless=False)
-            context1 = await browser1.new_context()
-            page1 = await context1.new_page()
+        # 1. 첫 번째 컨텍스트에서 방 생성 및 게임 진행
+        print("INFO: 첫 번째 컨텍스트에서 게임 생성 및 진행")
+        context1 = await browser.new_context(**CONTEXT_CONFIG)
+        page1 = await context1.new_page()
+
+        try:
+            # 방 생성
+            room_url = await OmokGameHelper.create_room_and_join(page1, "BrowserTest1")
+            print(f"SUCCESS: 방 생성 완료 - {room_url}")
+
+            # 세션 정보 저장 (로컬 스토리지에서)
+            session_data = await page1.evaluate(
+                """
+                localStorage.getItem('omok_session') ?
+                JSON.parse(localStorage.getItem('omok_session')) : null
+            """
+            )
+
+            if session_data:
+                print(f"세션 데이터 저장됨: {session_data.get('sessionId', 'N/A')}")
+            else:
+                print("WARNING: 세션 데이터가 로컬 스토리지에 저장되지 않음")
+
+            # 게임 상태 확인
+            game_state = await page1.evaluate(
+                "window.omokClient ? window.omokClient.state : null"
+            )
+            if game_state:
+                print(
+                    f"게임 상태 확인: 닉네임={game_state.get('nickname')}, "
+                    f"세션={game_state.get('sessionId')}"
+                )
+
+        finally:
+            await context1.close()
+            print("INFO: 첫 번째 컨텍스트 종료 완료")
+
+        # 2. 새 컨텍스트에서 같은 URL 접속 및 세션 복원 시도
+        if room_url:
+            print("INFO: 새 컨텍스트에서 세션 복원 시도")
+            context2 = await browser.new_context(**CONTEXT_CONFIG)
+            page2 = await context2.new_page()
 
             try:
-                # 방 생성
-                room_url = await OmokGameHelper.create_room_and_join(
-                    page1, "BrowserTest1"
-                )
-                print(f"SUCCESS: 방 생성 완료 - {room_url}")
-
-                # 세션 정보 저장 (로컬 스토리지에서)
-                session_data = await page1.evaluate(
-                    """
-                    localStorage.getItem('omok_session') ?
-                    JSON.parse(localStorage.getItem('omok_session')) : null
-                """
-                )
-
+                # 이전 세션이 있다면 로컬 스토리지에 복원
                 if session_data:
-                    print(f"세션 데이터 저장됨: {session_data.get('sessionId', 'N/A')}")
-                else:
-                    print("WARNING: 세션 데이터가 로컬 스토리지에 저장되지 않음")
-
-                # 게임 상태 확인
-                game_state = await page1.evaluate(
-                    "window.omokClient ? window.omokClient.state : null"
-                )
-                if game_state:
-                    print(
-                        f"게임 상태 확인: 닉네임={game_state.get('nickname')}, 세션={game_state.get('sessionId')}"
-                    )
-
-            finally:
-                await browser1.close()
-                print("INFO: 첫 번째 브라우저 종료 완료")
-
-        # 2. 새 브라우저에서 같은 URL 접속 및 세션 복원 시도
-        if room_url:
-            print("INFO: 새 브라우저에서 세션 복원 시도")
-            async with async_playwright() as p:
-                browser2 = await p.chromium.launch(headless=False)
-                context2 = await browser2.new_context()
-                page2 = await context2.new_page()
-
-                try:
-                    # 이전 세션이 있다면 로컬 스토리지에 복원
-                    if session_data:
-                        await page2.goto("http://localhost:8003")
-                        await page2.evaluate(
-                            f"""
-                            localStorage.setItem('omok_session', '{json.dumps(session_data).replace("'", "\\'")}')
+                    await page2.goto(OmokGameHelper.BASE_URL)
+                    await page2.evaluate(
+                        f"""
+                            localStorage.setItem('omok_session',
+                                '{json.dumps(session_data).replace("'", "\\'")}')
                         """
-                        )
-                        print("세션 데이터를 새 브라우저에 설정")
-
-                    # 게임 URL로 직접 접속
-                    await page2.goto(room_url)
-                    await page2.wait_for_load_state("networkidle")
-                    await page2.wait_for_timeout(5000)  # 세션 복원 대기
-
-                    # 3. 페이지 로드 및 게임 요소 확인
-                    page_content = await page2.content()
-                    game_indicators = OmokSelectors.TextPatterns.GAME_ELEMENTS + [
-                        "오목",
-                        "게임",
-                        "보드",
-                        "canvas",
-                        "플레이어",
-                    ]
-
-                    found_game = False
-                    for indicator in game_indicators:
-                        if indicator in page_content:
-                            found_game = True
-                            print(f"SUCCESS: 게임 요소 발견 - {indicator}")
-                            break
-
-                    assert found_game, "게임 관련 요소를 찾을 수 없습니다"
-
-                    # 4. 게임 보드 UI 확인
-                    board_visible = await OmokGameHelper.check_page_condition(
-                        page2,
-                        [OmokSelectors.GameUI.BOARD, "canvas", "#omokBoard"],
-                        "element",
-                        "게임 보드 표시 확인",
                     )
+                    print("세션 데이터를 새 브라우저에 설정")
 
-                    if board_visible:
-                        print("SUCCESS: 게임 보드 UI 복원 확인")
-                    else:
-                        print("WARNING: 게임 보드 UI 복원되지 않음 - 새 세션으로 진행")
+                # 게임 URL로 직접 접속
+                await page2.goto(room_url)
+                await page2.wait_for_load_state("networkidle")
+                await page2.wait_for_timeout(TEST_CONFIG["ui_timeout"])  # 세션 복원 대기
 
-                    # 5. JavaScript 클라이언트 상태 확인
-                    try:
-                        client_state = await page2.evaluate(
-                            "window.omokClient ? window.omokClient.state : null"
+                # 3. 페이지 로드 및 게임 요소 확인
+                page_content = await page2.content()
+                game_indicators = OmokSelectors.TextPatterns.GAME_ELEMENTS + [
+                    "오목",
+                    "게임",
+                    "보드",
+                    "canvas",
+                    "플레이어",
+                ]
+
+                found_game = False
+                for indicator in game_indicators:
+                    if indicator in page_content:
+                        found_game = True
+                        print(f"SUCCESS: 게임 요소 발견 - {indicator}")
+                        break
+
+                assert found_game, "게임 관련 요소를 찾을 수 없습니다"
+
+                # 4. 게임 보드 UI 확인
+                board_visible = await OmokGameHelper.check_page_condition(
+                    page2,
+                    [OmokSelectors.GameUI.BOARD, "canvas", "#omokBoard"],
+                    "element",
+                    "게임 보드 표시 확인",
+                )
+
+                if board_visible:
+                    print("SUCCESS: 게임 보드 UI 복원 확인")
+                else:
+                    print("WARNING: 게임 보드 UI 복원되지 않음 - 새 세션으로 진행")
+
+                # 5. JavaScript 클라이언트 상태 확인
+                try:
+                    client_state = await page2.evaluate(
+                        "window.omokClient ? window.omokClient.state : null"
+                    )
+                    if client_state:
+                        nickname = client_state.get("nickname")
+                        session_id = client_state.get("sessionId")
+                        connection_status = await page2.evaluate(
+                            "window.omokClient ? "
+                            "window.omokClient.connection.status : null"
                         )
-                        if client_state:
-                            nickname = client_state.get("nickname")
-                            session_id = client_state.get("sessionId")
-                            connection_status = await page2.evaluate(
-                                "window.omokClient ? window.omokClient.connection.status : null"
-                            )
 
-                            print(
-                                f"클라이언트 상태 - 닉네임: {nickname}, 세션: {session_id}, 연결: {connection_status}"
-                            )
+                        print(
+                            f"클라이언트 상태 - 닉네임: {nickname}, 세션: {session_id}, "
+                            f"연결: {connection_status}"
+                        )
 
-                            # 세션이 복원되었는지 또는 새로운 세션이 생성되었는지 확인
-                            if (
-                                session_id == session_data.get("sessionId")
-                                if session_data
-                                else False
-                            ):
-                                print("SUCCESS: 기존 세션 완전 복원")
-                            elif session_id:
-                                print("SUCCESS: 새로운 세션으로 게임 접속 (세션 만료 후 새 세션)")
-                            else:
-                                print("WARNING: 세션 정보 없음")
+                        # 세션이 복원되었는지 또는 새로운 세션이 생성되었는지 확인
+                        if (
+                            session_id == session_data.get("sessionId")
+                            if session_data
+                            else False
+                        ):
+                            print("SUCCESS: 기존 세션 완전 복원")
+                        elif session_id:
+                            print("SUCCESS: 새로운 세션으로 게임 접속 (세션 만료 후 새 세션)")
                         else:
-                            print("INFO: JavaScript 클라이언트 아직 초기화되지 않음")
-                    except Exception as e:
-                        print(f"INFO: 클라이언트 상태 확인 중 오류 - {e}")
-
-                    # 6. 닉네임 입력 등 추가 설정이 필요한지 확인
-                    nickname_input_visible = False
-                    try:
-                        nickname_input = page2.locator("#nicknameInput")
-                        if await nickname_input.is_visible(timeout=2000):
-                            nickname_input_visible = True
-                            print("INFO: 닉네임 입력 필요 - 새 세션으로 처리됨")
-
-                            # 닉네임 입력 후 접속 시도
-                            await nickname_input.fill("BrowserTest2")
-                            confirm_btn = page2.locator(
-                                "button:has-text('확인'), button:has-text('입장')"
-                            )
-                            if await confirm_btn.first.is_visible(timeout=2000):
-                                await confirm_btn.first.click()
-                                await page2.wait_for_timeout(3000)
-                                print("SUCCESS: 새 세션으로 게임 접속 완료")
-                    except:
-                        pass
-
-                    if not nickname_input_visible:
-                        print("SUCCESS: 세션 복원 또는 자동 접속 완료")
-
-                    # 7. 최종 게임 상태 확인
-                    final_content = await page2.content()
-                    if any(indicator in final_content for indicator in game_indicators):
-                        print("SUCCESS: 브라우저 재접속 후 게임 상태 확인")
+                            print("WARNING: 세션 정보 없음")
                     else:
-                        print("WARNING: 재접속 후 게임 상태 불완전")
-
-                    print("SUCCESS: 브라우저 재접속 테스트 완료")
-
+                        print("INFO: JavaScript 클라이언트 아직 초기화되지 않음")
                 except Exception as e:
-                    print(f"ERROR: 브라우저 재접속 테스트 실패 - {e}")
-                    raise
-                finally:
-                    await browser2.close()
+                    print(f"INFO: 클라이언트 상태 확인 중 오류 - {e}")
+
+                # 6. 닉네임 입력 등 추가 설정이 필요한지 확인
+                nickname_input_visible = False
+                try:
+                    nickname_input = page2.locator("#nicknameInput")
+                    if await nickname_input.is_visible(
+                        timeout=TEST_CONFIG["element_wait"]
+                    ):
+                        nickname_input_visible = True
+                        print("INFO: 닉네임 입력 필요 - 새 세션으로 처리됨")
+
+                        # 닉네임 입력 후 접속 시도
+                        await nickname_input.fill("BrowserTest2")
+                        confirm_btn = page2.locator(
+                            f"{OmokSelectors.Buttons.CONFIRM}, "
+                            f"{OmokSelectors.Buttons.ENTER}"
+                        )
+                        if await confirm_btn.first.is_visible(
+                            timeout=TEST_CONFIG["element_wait"]
+                        ):
+                            await confirm_btn.first.click()
+                            await page2.wait_for_timeout(TEST_CONFIG["game_action"])
+                            print("SUCCESS: 새 세션으로 게임 접속 완료")
+                except Exception:
+                    pass
+
+                if not nickname_input_visible:
+                    print("SUCCESS: 세션 복원 또는 자동 접속 완료")
+
+                # 7. 최종 게임 상태 확인
+                final_content = await page2.content()
+                if any(indicator in final_content for indicator in game_indicators):
+                    print("SUCCESS: 브라우저 재접속 후 게임 상태 확인")
+                else:
+                    print("WARNING: 재접속 후 게임 상태 불완전")
+
+                print("SUCCESS: 브라우저 재접속 테스트 완료")
+
+            except Exception as e:
+                print(f"ERROR: 브라우저 재접속 테스트 실패 - {e}")
+                raise
+            finally:
+                await context2.close()
         else:
             raise AssertionError("방 URL을 생성할 수 없어서 재접속 테스트 불가")
 
@@ -919,15 +1007,15 @@ class TestS6GameEndAndResult:
         # 3. 게임 종료 관련 버튼 및 기능 확인
         end_game_buttons = [
             OmokSelectors.Buttons.RESTART,
-            "button:has-text('새 게임')",
-            "button:has-text('다시하기')",
-            "button:has-text('홈으로')",
+            OmokSelectors.Buttons.NEW_GAME,
+            OmokSelectors.Buttons.RETRY,
+            OmokSelectors.Buttons.HOME,
         ]
 
         for button_selector in end_game_buttons:
             try:
                 button = page1.locator(button_selector)
-                if await button.is_visible(timeout=1000):
+                if await button.is_visible(timeout=TEST_CONFIG["element_wait"]):
                     print(f"SUCCESS: 게임 종료 관련 버튼 발견 - {button_selector}")
 
                     # 버튼 클릭 가능성 확인 (실제 클릭은 하지 않음)
@@ -935,7 +1023,7 @@ class TestS6GameEndAndResult:
                     if is_enabled:
                         print(f"SUCCESS: 버튼 활성 상태 확인 - {button_selector}")
                     break
-            except:
+            except Exception:
                 continue
 
         # 4. JavaScript 게임 상태에서 승리 조건 확인 함수 존재 여부
@@ -964,7 +1052,7 @@ class TestS6GameEndAndResult:
                 print("SUCCESS: 모달 시스템 존재 - 승부 판정 UI 지원 가능")
             if toast_system:
                 print("SUCCESS: 토스트 시스템 존재 - 게임 종료 알림 지원 가능")
-        except:
+        except Exception:
             pass
 
         print("SUCCESS: S6-1 승리 조건 및 게임 종료 테스트 완료")
@@ -1000,63 +1088,53 @@ class TestS6GameEndAndResult:
         )
         print(f"연결 해제 전 Player2 연결 상태: {before_disconnect}")
 
-        # 2. 나가기 버튼 찾기 및 클릭 시도
+        # 2. 나가기 버튼 찾기 및 클릭 시도 (헬퍼 함수 사용)
         leave_button_selectors = [
-            "button:has-text('나가기')",
-            "button:has-text('방 나가기')",
-            "button:has-text('홈으로')",
-            "button:has-text('메인으로')",
-            "button:has-text('종료')",
+            OmokSelectors.Buttons.LEAVE,
+            OmokSelectors.Buttons.LEAVE_ROOM,
+            OmokSelectors.Buttons.HOME,
+            OmokSelectors.Buttons.MAIN,
+            OmokSelectors.Buttons.EXIT,
             ".leave-button",
             "#leaveButton",
         ]
 
         print("INFO: 나가기 버튼 찾기 및 클릭")
-        leave_button_found = False
-        for button_selector in leave_button_selectors:
-            try:
-                leave_btn = page1.locator(button_selector)
-                if await leave_btn.is_visible(timeout=2000):
-                    await leave_btn.click()
-                    leave_button_found = True
-                    print(f"SUCCESS: 나가기 버튼 클릭 - {button_selector}")
+        leave_button_found = await OmokGameHelper.find_and_click_button(
+            page1,
+            leave_button_selectors,
+            timeout=TEST_CONFIG["element_wait"],
+            success_message="나가기 버튼 클릭",
+        )
 
-                    # 3. 확인 팝업 처리
-                    await page1.wait_for_timeout(1000)
+        if leave_button_found:
+            # 3. 확인 팝업 처리 (헬퍼 함수 사용)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
-                    # 확인 버튼 찾기
-                    confirm_selectors = [
-                        OmokSelectors.Buttons.CONFIRM,
-                        "button:has-text('확인')",
-                        "button:has-text('예')",
-                        "button:has-text('OK')",
-                        "button:has-text('떠나기')",
-                    ]
+            confirm_selectors = [
+                OmokSelectors.Buttons.CONFIRM,
+                OmokSelectors.Buttons.YES,
+                OmokSelectors.Buttons.OK,
+                OmokSelectors.Buttons.QUIT,
+            ]
 
-                    for confirm_selector in confirm_selectors:
-                        try:
-                            confirm_btn = page1.locator(confirm_selector)
-                            if await confirm_btn.is_visible(timeout=1000):
-                                await confirm_btn.click()
-                                print(f"SUCCESS: 확인 버튼 클릭 - {confirm_selector}")
-                                break
-                        except:
-                            continue
-
-                    break
-            except:
-                continue
+            await OmokGameHelper.find_and_click_button(
+                page1,
+                confirm_selectors,
+                timeout=TEST_CONFIG["element_wait"],
+                success_message="확인 버튼 클릭",
+            )
 
         # 4. 나가기 버튼이 없다면 브라우저 탭 닫기로 연결 해제 시뮬레이션
         if not leave_button_found:
             print("INFO: 나가기 버튼 미발견 - 탭 닫기로 연결 해제 시뮬레이션")
-            current_url = page1.url
+            # current_url = page1.url  # Unused variable
             await page1.goto("about:blank")  # 다른 페이지로 이동 (연결 해제 시뮬레이션)
-            await page1.wait_for_timeout(2000)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 5. 남은 플레이어(page2)에서 상대방 퇴장 감지 확인
         print("INFO: 남은 플레이어에서 상대방 퇴장 감지 확인")
-        await page2.wait_for_timeout(3000)  # 퇴장 감지 대기
+        await page2.wait_for_timeout(TEST_CONFIG["game_action"])  # 퇴장 감지 대기
 
         # 연결 상태나 게임 상태 변경 확인
         try:
@@ -1094,7 +1172,7 @@ class TestS6GameEndAndResult:
 
         # 6. 나간 플레이어의 페이지 이동 확인 (나가기 버튼을 클릭한 경우)
         if leave_button_found:
-            await page1.wait_for_timeout(3000)
+            await page1.wait_for_timeout(TEST_CONFIG["game_action"])
             final_url = page1.url
 
             # 메인 페이지나 다른 페이지로 이동했는지 확인

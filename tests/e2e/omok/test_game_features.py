@@ -10,10 +10,9 @@ scenarios.md의 S5 시나리오를 체계적으로 검증:
 import asyncio
 
 import pytest
-import pytest_asyncio
-from playwright.async_api import Page, async_playwright, expect
 
-from .omok_helpers import OmokGameHelper, OmokSelectors, OmokTestScenarios
+from ...conftest import TEST_CONFIG
+from .omok_helpers import OmokGameHelper, OmokSelectors
 
 
 class TestS5GameFeatures:
@@ -33,24 +32,28 @@ class TestS5GameFeatures:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정
-        room_url = await OmokGameHelper.setup_two_player_game(
-            page1, page2, "Player1", "Player2"
-        )
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(page1, page2, "Player1", "Player2")
 
         # 실제 색깔 배정 확인 및 흑돌 플레이어부터 시작
         player1_info = await page1.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
         player2_info = await page2.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
 
         print(
-            f"색깔 배정 - Player1: color={player1_info['color']}, Player2: color={player2_info['color']}"
+            f"색깔 배정 - Player1: color={player1_info['color']}, "
+            f"Player2: color={player2_info['color']}"
         )
 
         # 흑돌(1) 플레이어가 첫 수, 백돌(2) 플레이어가 두 번째 수
@@ -88,7 +91,7 @@ class TestS5GameFeatures:
 
         if found_undo:
             # 백돌 플레이어에게 무르기 요청 팝업 확인
-            await second_page.wait_for_timeout(2000)
+            await second_page.wait_for_timeout(TEST_CONFIG["element_wait"])
 
             popup_indicators = OmokSelectors.TextPatterns.UNDO_REQUEST_TITLES + [
                 OmokSelectors.Buttons.AGREE,
@@ -116,12 +119,10 @@ class TestS5GameFeatures:
                 )
 
                 # S5-1 검증: 백돌 플레이어의 마지막 수 제거, 턴이 백돌 플레이어로 변경
-                await page1.wait_for_timeout(2000)
-                await page2.wait_for_timeout(2000)
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+                await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
-                game_state = await page1.evaluate(
-                    "window.omokClient ? window.omokClient.state.gameState : null"
-                )
+                game_state = await OmokGameHelper.get_game_state(page1)
                 assert game_state is not None, "게임 상태를 가져올 수 없습니다"
 
                 current_player = game_state["current_player"]
@@ -164,24 +165,28 @@ class TestS5GameFeatures:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정 (헬퍼 모듈 사용)
-        room_url = await OmokGameHelper.setup_two_player_game(
-            page1, page2, "Player1", "Player2"
-        )
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(page1, page2, "Player1", "Player2")
 
         # 실제 색깔 배정 확인 및 흑돌 플레이어가 첫 수 놓기
         player1_info = await page1.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
         player2_info = await page2.evaluate(
             """
-            window.omokClient.state.players.find(p => p.player_number === window.omokClient.state.myPlayerNumber)
+            window.omokClient.state.players.find(
+                p => p.player_number === window.omokClient.state.myPlayerNumber
+            )
         """
         )
 
         print(
-            f"색깔 배정 - Player1: color={player1_info['color']}, Player2: color={player2_info['color']}"
+            f"색깔 배정 - Player1: color={player1_info['color']}, "
+            f"Player2: color={player2_info['color']}"
         )
 
         # 흑돌(1) 플레이어가 첫 수 놓음 (이후 백돌 턴이 됨)
@@ -219,7 +224,7 @@ class TestS5GameFeatures:
 
         if found_undo:
             # 백돌 플레이어에게 무르기 요청 팝업이 나타나는지 확인
-            await second_page.wait_for_timeout(2000)
+            await second_page.wait_for_timeout(TEST_CONFIG["element_wait"])
 
             popup_indicators = OmokSelectors.TextPatterns.UNDO_REQUEST_TITLES + [
                 OmokSelectors.Buttons.AGREE,
@@ -251,16 +256,14 @@ class TestS5GameFeatures:
                     raise AssertionError("무르기 승인 버튼을 찾을 수 없어서 승인 처리 불가")
 
                 # 무르기 후 상태 확인
-                await page1.wait_for_timeout(2000)
-                await page2.wait_for_timeout(2000)
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+                await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
                 # 무르기 후 상태 검증 (실제 성공 조건)
                 print("무르기 후 턴 변경 검증 시작...")
 
                 # 1. 게임 상태에서 현재 턴 확인 - 반드시 흑돌(1)이어야 함
-                game_state = await page1.evaluate(
-                    "window.omokClient ? window.omokClient.state.gameState : null"
-                )
+                game_state = await OmokGameHelper.get_game_state(page1)
                 assert game_state is not None, "게임 상태를 가져올 수 없습니다"
                 assert "current_player" in game_state, "게임 상태에 current_player 정보가 없습니다"
 
@@ -301,9 +304,8 @@ class TestS5GameFeatures:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정
-        room_url = await OmokGameHelper.setup_two_player_game(
-            page1, page2, "Player1", "Player2"
-        )
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(page1, page2, "Player1", "Player2")
 
         print("INFO: 게임 시작 직후 버튼 상태 확인")
 
@@ -316,7 +318,7 @@ class TestS5GameFeatures:
         restart_btn = page1.locator(OmokSelectors.Buttons.RESTART).first
 
         # 무르기 버튼 상태 확인 - 반드시 비활성화되어 있어야 함
-        if await undo_btn.is_visible(timeout=2000):
+        if await undo_btn.is_visible(timeout=TEST_CONFIG["element_wait"]):
             is_disabled = await undo_btn.is_disabled()
             assert is_disabled, "게임 시작 직후 무르기 버튼이 활성화되어 있으면 안 됩니다"
             print("SUCCESS: 게임 시작 직후 무르기 버튼 비활성화 확인")
@@ -324,7 +326,9 @@ class TestS5GameFeatures:
             print("SUCCESS: 게임 시작 직후 무르기 버튼 숨김 확인")
 
         # 재시작 버튼 상태 확인 - 반드시 활성화되어 있어야 함
-        assert await restart_btn.is_visible(timeout=2000), "재시작 버튼이 보이지 않습니다"
+        assert await restart_btn.is_visible(
+            timeout=TEST_CONFIG["element_wait"]
+        ), "재시작 버튼이 보이지 않습니다"
         is_disabled = await restart_btn.is_disabled()
         assert not is_disabled, "게임 시작과 동시에 재시작 버튼이 활성화되어야 합니다"
         print("SUCCESS: 게임 시작과 동시에 재시작 버튼 활성화 확인")
@@ -332,16 +336,20 @@ class TestS5GameFeatures:
         # 2. scenarios.md S5-3: 첫 수를 놓은 후부터 무르기 버튼 활성화
         print("\nINFO: 3-5수 진행 후 버튼 상태 확인")
         await OmokGameHelper.make_alternating_moves(page1, page2, moves_count=3)
-        await page1.wait_for_timeout(2000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 무르기 버튼 활성화 확인 - 첫 수 이후 반드시 활성화되어야 함
-        assert await undo_btn.is_visible(timeout=2000), "무르기 버튼이 보이지 않습니다"
+        assert await undo_btn.is_visible(
+            timeout=TEST_CONFIG["element_wait"]
+        ), "무르기 버튼이 보이지 않습니다"
         is_disabled = await undo_btn.is_disabled()
         assert not is_disabled, "첫 수를 놓은 후 무르기 버튼이 활성화되어야 합니다"
         print("SUCCESS: 첫 수 이후 무르기 버튼 활성화 확인")
 
         # 재시작 버튼 여전히 활성화 확인
-        assert await restart_btn.is_visible(timeout=2000), "재시작 버튼이 보이지 않습니다"
+        assert await restart_btn.is_visible(
+            timeout=TEST_CONFIG["element_wait"]
+        ), "재시작 버튼이 보이지 않습니다"
         is_disabled = await restart_btn.is_disabled()
         assert not is_disabled, "게임 진행 중 재시작 버튼이 활성화되어야 합니다"
         print("SUCCESS: 게임 진행 중 재시작 버튼 활성화 유지 확인")
@@ -351,15 +359,15 @@ class TestS5GameFeatures:
         await OmokGameHelper.make_alternating_moves(
             page1, page2, moves_count=7
         )  # 추가로 7수 더
-        await page1.wait_for_timeout(2000)
+        await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
         # 버튼들이 여전히 활성화되어 있는지 확인
-        if await undo_btn.is_visible(timeout=2000):
+        if await undo_btn.is_visible(timeout=TEST_CONFIG["element_wait"]):
             is_disabled = await undo_btn.is_disabled()
             if not is_disabled:
                 print("SUCCESS: 10수 이상에서도 무르기 버튼 활성화 유지")
 
-        if await restart_btn.is_visible(timeout=2000):
+        if await restart_btn.is_visible(timeout=TEST_CONFIG["element_wait"]):
             is_disabled = await restart_btn.is_disabled()
             if not is_disabled:
                 print("SUCCESS: 10수 이상에서도 재시작 버튼 활성화 유지")
@@ -370,7 +378,7 @@ class TestS5GameFeatures:
         # 무르기 버튼 클릭
         if await undo_btn.is_visible() and not await undo_btn.is_disabled():
             await undo_btn.click()
-            await page1.wait_for_timeout(1000)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
             # 버튼이 일시적으로 비활성화되거나 로딩 상태가 되는지 확인
             try:
@@ -383,7 +391,7 @@ class TestS5GameFeatures:
                     classes = await undo_btn.get_attribute("class")
                     if classes and ("loading" in classes or "processing" in classes):
                         print("SUCCESS: 무르기 버튼 클릭 후 로딩 상태")
-            except:
+            except Exception:
                 pass
 
         print("SUCCESS: S5-3 게임 도중 버튼 활성화 상태 테스트 완료")
@@ -402,9 +410,8 @@ class TestS5GameFeatures:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정 (헬퍼 모듈 사용)
-        room_url = await OmokGameHelper.setup_two_player_game(
-            page1, page2, "Player1", "Player2"
-        )
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(page1, page2, "Player1", "Player2")
 
         # 게임 진행 (헬퍼 모듈 사용)
         await OmokGameHelper.make_alternating_moves(page1, page2)
@@ -420,7 +427,7 @@ class TestS5GameFeatures:
 
         if found_restart:
             # Player2에게 재시작 요청 팝업 확인 (헬퍼 모듈 사용)
-            await page2.wait_for_timeout(2000)
+            await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
             restart_popup_indicators = (
                 OmokSelectors.TextPatterns.RESTART_REQUEST_TITLES
@@ -448,13 +455,11 @@ class TestS5GameFeatures:
                 # scenarios.md S5-4 검증 포인트 구현:
                 # - 수락 시 보드 완전 초기화
                 # - 선공/후공 순서 유지 또는 변경 규칙 적용
-                await page1.wait_for_timeout(3000)
-                await page2.wait_for_timeout(3000)
+                await page1.wait_for_timeout(TEST_CONFIG["game_action"])
+                await page2.wait_for_timeout(TEST_CONFIG["game_action"])
 
                 # 1. 보드 완전 초기화 확인
-                game_state = await page1.evaluate(
-                    "window.omokClient ? window.omokClient.state.gameState : null"
-                )
+                game_state = await OmokGameHelper.get_game_state(page1)
                 assert game_state is not None, "재시작 후 게임 상태를 가져올 수 없습니다"
 
                 board_state = game_state.get("board")
@@ -471,14 +476,28 @@ class TestS5GameFeatures:
 
                 # 2. 턴이 정상적으로 설정되었는지 확인 (Player1 또는 Player2)
                 current_player = game_state.get("current_player")
-                assert current_player in [1, 2], f"재시작 후 턴이 올바르지 않음: {current_player}"
+                assert current_player in [
+                    1,
+                    2,
+                ], f"재시작 후 턴이 올바르지 않음: {current_player}"
                 print(f"SUCCESS: 재시작 후 현재 턴: Player{current_player}")
 
-                # 3. 게임 보드가 다시 활성화되었는지 확인
-                canvas1 = page1.locator("#omokBoard")
-                canvas2 = page2.locator("#omokBoard")
-                assert await canvas1.is_visible(), "Player1 오목 보드가 표시되지 않음"
-                assert await canvas2.is_visible(), "Player2 오목 보드가 표시되지 않음"
+                # 3. 게임 보드가 다시 활성화되었는지 확인 - 헬퍼 함수 활용
+                board1_visible = await OmokGameHelper.check_page_condition(
+                    page1,
+                    [OmokSelectors.GameUI.BOARD],
+                    "element",
+                    "Player1 오목 보드 표시 확인",
+                )
+                board2_visible = await OmokGameHelper.check_page_condition(
+                    page2,
+                    [OmokSelectors.GameUI.BOARD],
+                    "element",
+                    "Player2 오목 보드 표시 확인",
+                )
+
+                assert board1_visible, "Player1 오목 보드가 표시되지 않음"
+                assert board2_visible, "Player2 오목 보드가 표시되지 않음"
                 print("SUCCESS: 재시작 후 게임 보드 활성화 확인")
 
             else:
@@ -501,9 +520,8 @@ class TestS5GameFeatures:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정 (헬퍼 모듈 사용)
-        room_url = await OmokGameHelper.setup_two_player_game(
-            page1, page2, "Player1", "Player2"
-        )
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(page1, page2, "Player1", "Player2")
 
         # 채팅 입력 필드 찾기 (헬퍼 모듈 사용)
         chat_input_selectors = [
@@ -521,70 +539,42 @@ class TestS5GameFeatures:
 
             # Enter 키로 전송
             await page1.keyboard.press("Enter")
-            await page2.wait_for_timeout(2000)
+            await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
             # scenarios.md S5-5 검증 포인트 구현:
             # - 메시지 즉시 상대방에게 전달
             # - 보낸 사람 닉네임과 메시지 정확 표시
 
-            # Player2 화면에서 메시지 확인
-            chat_area_selectors = [
-                OmokSelectors.Chat.MESSAGES,
-                OmokSelectors.Chat.MESSAGE_LIST,
-            ]
+            # Player2 화면에서 메시지 확인 - 헬퍼 함수 활용
+            message_found = await OmokGameHelper.check_page_condition(
+                page2, [test_message], "content", "채팅 메시지 수신 확인"
+            )
 
-            message_found = False
-            nickname_found = False
-            for chat_area_sel in chat_area_selectors:
-                try:
-                    chat_area = page2.locator(chat_area_sel)
-                    if await chat_area.is_visible(timeout=2000):
-                        area_text = await chat_area.text_content()
-                        if test_message in area_text:
-                            message_found = True
-                            if "Player1" in area_text:
-                                nickname_found = True
-                            print("SUCCESS: 채팅 메시지 수신 확인")
-                            break
-                except:
-                    continue
-
-            if not message_found:
-                # 전체 페이지에서 메시지 찾기
-                page2_content = await page2.content()
-                if test_message in page2_content:
-                    message_found = True
-                    if "Player1" in page2_content:
-                        nickname_found = True
-                    print("SUCCESS: 채팅 메시지 페이지에서 발견")
+            nickname_found = await OmokGameHelper.check_page_condition(
+                page2, ["Player1"], "content", "닉네임 표시 확인"
+            )
 
             # 반드시 메시지와 닉네임이 모두 표시되어야 함
             assert message_found, f"채팅 메시지가 상대방에게 전달되지 않았습니다: {test_message}"
             assert nickname_found, "보낸 사람 닉네임이 표시되지 않았습니다"
             print("SUCCESS: 메시지 즉시 전달 및 닉네임 표시 확인")
 
-            # Player2가 답장
-            chat_input2_selectors = [
-                OmokSelectors.Chat.INPUT,
-            ]
+            # Player2가 답장 - 헬퍼 함수 활용
+            chat_input2 = await OmokGameHelper.find_input_field(
+                page2, [OmokSelectors.Chat.INPUT]
+            )
 
-            for selector in chat_input2_selectors:
-                try:
-                    chat_input2 = page2.locator(selector)
-                    if await chat_input2.is_visible(timeout=2000):
-                        reply_message = "네, 안녕하세요! 답장입니다."
-                        await chat_input2.fill(reply_message)
-                        await page2.keyboard.press("Enter")
+            if chat_input2:
+                reply_message = "네, 안녕하세요! 답장입니다."
+                await chat_input2.fill(reply_message)
+                await page2.keyboard.press("Enter")
 
-                        # Player1에서 답장 확인
-                        await page1.wait_for_timeout(2000)
-                        page1_content = await page1.content()
-                        if reply_message in page1_content:
-                            print("SUCCESS: 채팅 답장 수신 확인")
-
-                        break
-                except:
-                    continue
+                # Player1에서 답장 확인
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+                # reply_received =
+                await OmokGameHelper.check_page_condition(
+                    page1, [reply_message], "content", "채팅 답장 수신 확인"
+                )
 
             # scenarios.md S5-5 추가 검증 포인트:
             # - HTML 태그 입력 시 XSS 방지
@@ -594,26 +584,29 @@ class TestS5GameFeatures:
             xss_test_message = "<script>alert('xss')</script>안전한 메시지"
             await found_chat_input.fill(xss_test_message)
             await page1.keyboard.press("Enter")
-            await page2.wait_for_timeout(2000)
+            await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
-            # 채팅 영역에서만 스크립트 태그가 이스케이프되었는지 확인
-            chat_areas = [
-                OmokSelectors.Chat.MESSAGES,
-                OmokSelectors.Chat.MESSAGE_LIST,
-                "#chatMessages",
-                ".chat-messages",
-            ]
+            # 안전한 메시지가 표시되는지 먼저 확인
+            safe_message_found = await OmokGameHelper.check_page_condition(
+                page2, ["안전한 메시지"], "content", "XSS 테스트 메시지 확인"
+            )
 
             xss_prevented = False
-            for chat_area_sel in chat_areas:
-                try:
-                    chat_area = page2.locator(chat_area_sel)
-                    if await chat_area.is_visible(timeout=2000):
-                        chat_text = await chat_area.text_content()
-                        chat_html = await chat_area.inner_html()
+            if safe_message_found:
+                # 채팅 영역에서 HTML 이스케이프 확인
+                chat_areas = [
+                    OmokSelectors.Chat.MESSAGES,
+                    OmokSelectors.Chat.MESSAGE_LIST,
+                    ".chat-messages",
+                ]
 
-                        # 안전한 메시지는 텍스트로 표시되어야 함
-                        if "안전한 메시지" in chat_text:
+                for chat_area_sel in chat_areas:
+                    try:
+                        chat_area = page2.locator(chat_area_sel)
+                        if await chat_area.is_visible(
+                            timeout=TEST_CONFIG["element_wait"]
+                        ):
+                            chat_html = await chat_area.inner_html()
                             # HTML에서 스크립트 태그가 이스케이프되었는지 확인
                             if (
                                 "&lt;script&gt;" in chat_html
@@ -622,30 +615,31 @@ class TestS5GameFeatures:
                                 xss_prevented = True
                                 print("SUCCESS: XSS 방지 확인 - HTML 태그가 이스케이프됨")
                                 break
-                except:
-                    continue
+                    except Exception:
+                        continue
 
             if not xss_prevented:
-                # 전체 페이지에서 확인하되, 실제 메시지 부분만 검증
-                page2_content = await page2.content()
-                if "안전한 메시지" in page2_content:
-                    # 채팅 메시지에서만 스크립트가 이스케이프되었는지 확인
-                    # 실제로는 &lt;script&gt; 형태로 이스케이프되어 있어야 함
-                    if (
-                        "&lt;script&gt;" in page2_content
-                        or "alert('xss')" not in page2_content
-                    ):
-                        xss_prevented = True
-                        print("SUCCESS: XSS 방지 확인 - 스크립트가 실행되지 않음")
+                # 전체 페이지에서 XSS 방지 확인
+                xss_escaped = await OmokGameHelper.check_page_condition(
+                    page2, ["&lt;script&gt;"], "content", "XSS 이스케이프 확인"
+                )
+
+                script_not_executed = not await OmokGameHelper.check_page_condition(
+                    page2, ["alert('xss')"], "content", "스크립트 실행 여부 확인"
+                )
+
+                if xss_escaped or script_not_executed:
+                    xss_prevented = True
+                    print("SUCCESS: XSS 방지 확인 - 스크립트가 실행되지 않음")
 
             assert xss_prevented, "XSS 방지가 제대로 작동하지 않습니다"
 
             # 빈 메시지 전송 방지 테스트
             await found_chat_input.fill("")  # 빈 메시지
-            before_empty_content = await page2.content()
+            # before_empty_content = await page2.content()
             await page1.keyboard.press("Enter")
-            await page1.wait_for_timeout(1000)
-            after_empty_content = await page2.content()
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
+            # after_empty_content = await page2.content()
 
             # 빈 메시지로 인한 새로운 채팅이 추가되지 않아야 함
             # (내용이 변하지 않거나 빈 메시지가 필터링되어야 함)
@@ -654,7 +648,7 @@ class TestS5GameFeatures:
             # 공백만 있는 메시지 테스트
             await found_chat_input.fill("   ")  # 공백만
             await page1.keyboard.press("Enter")
-            await page1.wait_for_timeout(1000)
+            await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
             print("SUCCESS: 공백 메시지 처리 테스트 완료")
 
             # 긴 메시지 테스트
@@ -662,9 +656,9 @@ class TestS5GameFeatures:
             try:
                 await found_chat_input.fill(long_message)
                 await page1.keyboard.press("Enter")
-                await page2.wait_for_timeout(2000)
+                await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
                 print("SUCCESS: 긴 메시지 처리 테스트 완료")
-            except:
+            except Exception:
                 pass
 
         else:
@@ -682,34 +676,39 @@ class TestS5ChatAdvanced:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정 (헬퍼 모듈 사용)
-        room_url = await OmokGameHelper.setup_two_player_game(
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(
             page1, page2, "TestPlayer1", "TestPlayer2"
         )
 
         # 채팅 입력 필드 찾기
         chat_input = page1.locator(OmokSelectors.Chat.INPUT).first
-        if await chat_input.is_visible(timeout=3000):
+        if await chat_input.is_visible(timeout=TEST_CONFIG["game_action"]):
             # 여러 메시지 전송하여 스크롤 테스트
             for i in range(10):
                 message = f"테스트 메시지 {i+1} - 긴 내용을 포함한 메시지입니다."
                 await chat_input.fill(message)
                 await page1.keyboard.press("Enter")
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(TEST_CONFIG["retry_interval"] / 1000)
 
             # 채팅 영역에서 스크롤 동작 확인
             chat_area = page1.locator(OmokSelectors.Chat.MESSAGES).first
             if await chat_area.is_visible():
                 # 스크롤을 위로 올려보기
-                await chat_area.scroll_to_top() if hasattr(
-                    chat_area, "scroll_to_top"
-                ) else None
-                await page1.wait_for_timeout(1000)
+                (
+                    await chat_area.scroll_to_top()
+                    if hasattr(chat_area, "scroll_to_top")
+                    else None
+                )
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
                 # 스크롤을 아래로 내리기
-                await chat_area.scroll_to_bottom() if hasattr(
-                    chat_area, "scroll_to_bottom"
-                ) else None
-                await page1.wait_for_timeout(1000)
+                (
+                    await chat_area.scroll_to_bottom()
+                    if hasattr(chat_area, "scroll_to_bottom")
+                    else None
+                )
+                await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
 
                 print("SUCCESS: 채팅 스크롤 테스트 완료")
 
@@ -721,12 +720,13 @@ class TestS5ChatAdvanced:
         page1, page2 = dual_pages
 
         # 두 플레이어 게임 설정 (헬퍼 모듈 사용)
-        room_url = await OmokGameHelper.setup_two_player_game(
+        # room_url =
+        await OmokGameHelper.setup_two_player_game(
             page1, page2, "TestPlayer1", "TestPlayer2"
         )
 
         chat_input = page1.locator(OmokSelectors.Chat.INPUT).first
-        if await chat_input.is_visible(timeout=3000):
+        if await chat_input.is_visible(timeout=TEST_CONFIG["game_action"]):
             # 특수문자 테스트
             special_messages = [
                 "한글 메시지 테스트 ㅎㅎㅎ",
@@ -740,7 +740,7 @@ class TestS5ChatAdvanced:
                 try:
                     await chat_input.fill(message)
                     await page1.keyboard.press("Enter")
-                    await page2.wait_for_timeout(1000)
+                    await page2.wait_for_timeout(TEST_CONFIG["element_wait"])
 
                     # Player2에서 메시지 확인
                     page2_content = await page2.content()

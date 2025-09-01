@@ -44,4 +44,5 @@ Thumbs.db
 
 # Planning & Documentation (개발 중 임시 계획서들)
 refactoring-plan/
+kiss-architecture-plan/
 /*.md
