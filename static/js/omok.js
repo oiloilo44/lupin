@@ -302,9 +302,9 @@ class OmokGameClient {
         this.cleanupWebSocket();
 
         // 게임별 정리 작업
-        if (this.gameState && this.gameState.status === 'playing') {
+        if (this.state.gameStarted && !this.state.gameEnded) {
             this.saveGameSession({
-                nickname: this.nickname,
+                nickname: this.state.myNickname,
                 sessionId: this.sessionId,
                 player_number: this.state.myPlayerNumber,
                 roomId: this.roomId,

@@ -55,9 +55,19 @@ class WebSocketHandler:
 
             session_id = message.get("session_id")
             nickname = message["nickname"]
+            
+            # 닉네임 유효성 검증 추가
+            nickname = nickname.strip()
+            if not nickname or len(nickname) > 20:
+                raise ValueError("닉네임은 1-20자 사이여야 합니다")
+            if any(char in nickname for char in ['<', '>', '&', '"', "'"]):
+                raise ValueError("닉네임에 특수문자(<, >, &, \", ')는 사용할 수 없습니다")
 
             # 세션이 있으면 해당 세션으로 플레이어 추가
             if session_id:
+                # 세션 ID 유효성 검증
+                if not self._validate_session_id(session_id):
+                    raise ValueError("유효하지 않은 세션 ID입니다")
                 player = room_manager.add_player_to_room(room_id, nickname, session_id)
             else:
                 # 세션이 없는 경우에도 유일성이 보장된 session_id를 생성해서 플레이어 추가
@@ -702,6 +712,28 @@ class WebSocketHandler:
             except Exception:
                 # 연결이 끊어진 경우 무시
                 pass
+
+    def _validate_session_id(self, session_id: str) -> bool:
+        """세션 ID 유효성 검증."""
+        if not session_id or not isinstance(session_id, str):
+            return False
+        # 세션 ID는 UUID 형식이어야 함
+        if len(session_id) != 36:
+            return False
+        # UUID 패턴 검증 (간단한 체크)
+        parts = session_id.split('-')
+        if len(parts) != 5:
+            return False
+        # 각 부분의 길이 체크
+        if len(parts[0]) != 8 or len(parts[1]) != 4 or len(parts[2]) != 4 or len(parts[3]) != 4 or len(parts[4]) != 12:
+            return False
+        # 16진수 문자만 포함하는지 체크
+        try:
+            for part in parts:
+                int(part, 16)
+        except ValueError:
+            return False
+        return True
 
 
 # 전역 핸들러 인스턴스
