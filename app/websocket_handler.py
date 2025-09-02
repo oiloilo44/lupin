@@ -41,32 +41,65 @@ class WebSocketHandler:
         self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
     ):
         """플레이어 참여 처리."""
-        room = room_manager.get_room(room_id)
-        if not room:
-            return
+        try:
+            # 필수 필드 검증
+            if not message.get("nickname"):
+                raise ValueError("닉네임이 필요합니다")
+            if not isinstance(message.get("nickname"), str):
+                raise ValueError("닉네임은 문자열이어야 합니다")
 
-        session_id = message.get("session_id")
-        nickname = message["nickname"]
+            room = room_manager.get_room(room_id)
+            if not room:
+                await self._send_error(websocket, "방을 찾을 수 없습니다", "validation")
+                return
 
-        # 세션이 있으면 해당 세션으로 플레이어 추가
-        if session_id:
-            player = room_manager.add_player_to_room(room_id, nickname, session_id)
-        else:
-            # 세션이 없는 경우에도 유일성이 보장된 session_id를 생성해서 플레이어 추가
-            temp_session_id = session_manager.generate_unique_session_id()
-            player = room_manager.add_player_to_room(room_id, nickname, temp_session_id)
-            session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
+            session_id = message.get("session_id")
+            nickname = message["nickname"]
 
-        if player:
-            # 플레이어 연결 상태 업데이트
-            room_manager.update_player_connection_status(
-                room_id, str(player.player_number), True
-            )
+            # 닉네임 유효성 검증 추가
+            nickname = nickname.strip()
+            if not nickname or len(nickname) > 20:
+                raise ValueError("닉네임은 1-20자 사이여야 합니다")
+            if any(char in nickname for char in ["<", ">", "&", '"', "'"]):
+                raise ValueError("닉네임에 특수문자(<, >, &, \", ')는 사용할 수 없습니다")
 
-            # WebSocket 연결 추가 (세션 ID와 함께)
-            room_manager.add_connection(room_id, websocket, session_id)
+            # 세션이 있으면 해당 세션으로 플레이어 추가
+            if session_id:
+                # 세션 ID 유효성 검증
+                if not self._validate_session_id(session_id):
+                    raise ValueError("유효하지 않은 세션 ID입니다")
+                player = room_manager.add_player_to_room(room_id, nickname, session_id)
+            else:
+                # 세션이 없는 경우에도 유일성이 보장된 session_id를 생성해서 플레이어 추가
+                temp_session_id = session_manager.generate_unique_session_id()
+                player = room_manager.add_player_to_room(
+                    room_id, nickname, temp_session_id
+                )
+                session_id = temp_session_id  # WebSocket 연결 시 사용하기 위해
 
-            await self._broadcast_room_update(room_id, room)
+            if player:
+                # 플레이어 연결 상태 업데이트
+                room_manager.update_player_connection_status(
+                    room_id, str(player.player_number), True
+                )
+
+                # WebSocket 연결 추가 (세션 ID와 함께)
+                room_manager.add_connection(room_id, websocket, session_id)
+
+                await self._broadcast_room_update(room_id, room)
+            else:
+                await self._send_error(websocket, "플레이어 추가에 실패했습니다", "game")
+
+        except ValueError as e:
+            await self._send_error(websocket, str(e), "validation")
+            import logging
+
+            logging.warning(f"입력 검증 실패 in room {room_id}: {e}")
+        except Exception as e:
+            await self._send_error(websocket, "서버 오류가 발생했습니다", "server")
+            import logging
+
+            logging.error(f"처리 중 오류 in room {room_id}: {e}", exc_info=True)
 
     async def _handle_reconnect(
         self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
@@ -112,20 +145,41 @@ class WebSocketHandler:
         self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
     ):
         """게임 이동 처리."""
-        room = room_manager.get_room(room_id)
-        if not room:
-            return
+        try:
+            # 필수 필드 검증
+            if "move" not in message:
+                raise ValueError("이동 정보가 필요합니다")
 
-        # 세션 ID로 플레이어 찾기
-        session_id = room_manager.get_session_id_by_websocket(websocket)
-        if not session_id:
-            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다.")
-            return
+            move = message["move"]
+            if not isinstance(move, dict) or "x" not in move or "y" not in move:
+                raise ValueError("올바른 이동 좌표가 필요합니다")
 
-        # 게임별 매니저로 이동 처리
-        if room.game_type == GameType.OMOK:
-            await self._handle_omok_move(websocket, room_id, message, session_id)
-        # 추후 다른 게임 타입 추가 가능
+            room = room_manager.get_room(room_id)
+            if not room:
+                await self._send_error(websocket, "방을 찾을 수 없습니다", "validation")
+                return
+
+            # 세션 ID로 플레이어 찾기
+            session_id = room_manager.get_session_id_by_websocket(websocket)
+            if not session_id:
+                await self._send_error(websocket, "세션 정보를 찾을 수 없습니다", "validation")
+                return
+
+            # 게임별 매니저로 이동 처리
+            if room.game_type == GameType.OMOK:
+                await self._handle_omok_move(websocket, room_id, message, session_id)
+            # 추후 다른 게임 타입 추가 가능
+
+        except ValueError as e:
+            await self._send_error(websocket, str(e), "validation")
+            import logging
+
+            logging.warning(f"입력 검증 실패 in room {room_id}: {e}")
+        except Exception as e:
+            await self._send_error(websocket, "서버 오류가 발생했습니다", "server")
+            import logging
+
+            logging.error(f"처리 중 오류 in room {room_id}: {e}", exc_info=True)
 
     async def _handle_omok_move(
         self,
@@ -445,46 +499,70 @@ class WebSocketHandler:
         self, websocket: WebSocket, room_id: str, message: Dict[str, Any]
     ):
         """채팅 메시지 처리."""
-        room = room_manager.get_room(room_id)
-        if not room:
-            return
+        try:
+            # 필수 필드 검증
+            if not message.get("message"):
+                raise ValueError("메시지 내용이 필요합니다")
+            if not isinstance(message.get("message"), str):
+                raise ValueError("메시지는 문자열이어야 합니다")
 
-        # 발신자 확인 (세션 ID 기반)
-        session_id = message.get("session_id", "")
-        sender = None
-        for player in room.players:
-            if player.session_id == session_id:
-                sender = player
-                break
+            room = room_manager.get_room(room_id)
+            if not room:
+                await self._send_error(websocket, "방을 찾을 수 없습니다", "validation")
+                return
 
-        if not sender:
-            return
+            # 발신자 확인 (세션 ID 기반)
+            session_id = message.get("session_id", "")
+            if not session_id:
+                await self._send_error(websocket, "세션 정보가 필요합니다", "validation")
+                return
 
-        # 채팅 메시지 생성
-        chat_message = ChatMessage(
-            nickname=sender.nickname,
-            message=message.get("message", ""),
-            timestamp=datetime.now().strftime("%H:%M:%S"),
-            player_number=sender.player_number,
-        )
+            sender = None
+            for player in room.players:
+                if player.session_id == session_id:
+                    sender = player
+                    break
 
-        # 채팅 히스토리에 추가 (최근 50개만 유지)
-        room.chat_history.append(chat_message)
-        if len(room.chat_history) > 50:
-            room.chat_history.pop(0)
+            if not sender:
+                await self._send_error(websocket, "플레이어 정보를 찾을 수 없습니다", "validation")
+                return
 
-        # 모든 플레이어에게 브로드캐스트
-        response = WebSocketMessage(
-            type=MessageType.CHAT_BROADCAST,
-            data={
-                "nickname": chat_message.nickname,
-                "message": chat_message.message,
-                "timestamp": chat_message.timestamp,
-                "player_number": chat_message.player_number,
-            },
-        )
+            # 채팅 메시지 생성
+            chat_message = ChatMessage(
+                nickname=sender.nickname,
+                message=message.get("message", ""),
+                timestamp=datetime.now().strftime("%H:%M:%S"),
+                player_number=sender.player_number,
+            )
 
-        await self._broadcast_to_room(room_id, response.to_json())
+            # 채팅 히스토리에 추가 (최근 50개만 유지)
+            room.chat_history.append(chat_message)
+            if len(room.chat_history) > 50:
+                room.chat_history.pop(0)
+
+            # 모든 플레이어에게 브로드캐스트
+            response = WebSocketMessage(
+                type=MessageType.CHAT_BROADCAST,
+                data={
+                    "nickname": chat_message.nickname,
+                    "message": chat_message.message,
+                    "timestamp": chat_message.timestamp,
+                    "player_number": chat_message.player_number,
+                },
+            )
+
+            await self._broadcast_to_room(room_id, response.to_json())
+
+        except ValueError as e:
+            await self._send_error(websocket, str(e), "validation")
+            import logging
+
+            logging.warning(f"입력 검증 실패 in room {room_id}: {e}")
+        except Exception as e:
+            await self._send_error(websocket, "서버 오류가 발생했습니다", "server")
+            import logging
+
+            logging.error(f"처리 중 오류 in room {room_id}: {e}", exc_info=True)
 
     async def _broadcast_room_update(self, room_id: str, room):
         """방 상태 업데이트 브로드캐스트."""
@@ -536,15 +614,23 @@ class WebSocketHandler:
         )
         await self._broadcast_to_room(room_id, response.to_json())
 
-    async def _send_error(self, websocket: WebSocket, error_message: str):
-        """에러 메시지 전송."""
-        response = WebSocketMessage(
-            type=MessageType.ERROR, data={"message": error_message}
-        )
+    async def _send_error(
+        self, websocket: WebSocket, message: str, error_type: str = "general"
+    ):
+        """통합 오류 메시지 전송 메서드."""
         try:
-            await websocket.send_text(json.dumps(response.to_json()))
-        except Exception:
-            pass
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "error_type": error_type,
+                    "message": message,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        except Exception as e:
+            import logging
+
+            logging.error(f"오류 메시지 전송 실패: {e}")
 
     async def _send_reconnect_success(self, websocket: WebSocket, room, player):
         """재접속 성공 메시지 전송."""
@@ -626,6 +712,34 @@ class WebSocketHandler:
             except Exception:
                 # 연결이 끊어진 경우 무시
                 pass
+
+    def _validate_session_id(self, session_id: str) -> bool:
+        """세션 ID 유효성 검증."""
+        if not session_id or not isinstance(session_id, str):
+            return False
+        # 세션 ID는 UUID 형식이어야 함
+        if len(session_id) != 36:
+            return False
+        # UUID 패턴 검증 (간단한 체크)
+        parts = session_id.split("-")
+        if len(parts) != 5:
+            return False
+        # 각 부분의 길이 체크
+        if (
+            len(parts[0]) != 8
+            or len(parts[1]) != 4
+            or len(parts[2]) != 4
+            or len(parts[3]) != 4
+            or len(parts[4]) != 12
+        ):
+            return False
+        # 16진수 문자만 포함하는지 체크
+        try:
+            for part in parts:
+                int(part, 16)
+        except ValueError:
+            return False
+        return True
 
 
 # 전역 핸들러 인스턴스

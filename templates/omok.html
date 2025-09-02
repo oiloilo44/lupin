@@ -121,6 +121,82 @@ button:disabled:hover {
     border-color: #ff4444;
     box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
 }
+
+/* 연결 상태 UI 개선 */
+.connection-status {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.status-icon {
+    font-size: 12px;
+    animation: pulse 2s infinite;
+}
+
+.status-icon.disconnected {
+    color: #dc3545;
+}
+
+.status-icon.reconnecting {
+    color: #ffc107;
+    animation: pulse 1s infinite;
+}
+
+.status-icon.connecting {
+    color: #17a2b8;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.connection-help {
+    color: #666;
+    font-size: 11px;
+    margin-top: 2px;
+    display: block;
+}
+
+.reconnect-progress {
+    margin-top: 4px;
+    width: 100%;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #ffc107;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.connection-status.disconnected {
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.connection-status.reconnecting {
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.05);
+}
 </style>
 {% endblock %}
 
@@ -138,14 +214,14 @@ window.omokGameConfig = {
 
 // OmokGameClient 인스턴스 생성 및 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    // 서버 데이터를 camelCase로 변환
-    const config = humps.camelizeKeys(window.omokGameConfig);
+    // 서버 데이터를 그대로 사용 (필요시 개별 변환)
+    const config = window.omokGameConfig;
 
     window.omokClient = new OmokGameClient(
-        config.roomId,
-        config.sessionId,
-        config.gameState,
-        config.playerData
+        config.room_id,
+        config.session_id,
+        config.game_state,
+        config.player_data
     );
     window.omokClient.initialize();
 });

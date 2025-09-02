@@ -62,8 +62,31 @@ function setOverlayOpacity(opacity) {
     }
 }
 
+// 토스트 중복 방지를 위한 전역 상태
+const toastHistory = {
+    lastMessage: null,
+    lastTitle: null,
+    lastTime: null,
+    duplicateThreshold: 1000  // 1초
+};
+
 // 전역 토스트 시스템 (기존 스타일 적용)
 function showGlobalToast(title, message, type = 'info', duration = 3000) {
+    const now = Date.now();
+
+    // 중복 검사
+    if (toastHistory.lastTitle === title &&
+        toastHistory.lastMessage === message &&
+        toastHistory.lastTime &&
+        (now - toastHistory.lastTime) < toastHistory.duplicateThreshold) {
+        console.log('중복 토스트 메시지 무시:', message);
+        return;
+    }
+
+    // 히스토리 업데이트
+    toastHistory.lastTitle = title;
+    toastHistory.lastMessage = message;
+    toastHistory.lastTime = now;
     const container = document.getElementById('globalToastContainer');
     if (!container) return;
 
