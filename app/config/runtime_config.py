@@ -1,4 +1,5 @@
 """런타임 설정 변경 지원."""
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -17,9 +18,7 @@ class RuntimeConfigManager:
         # 설정 로더에 자신을 등록 (순환 import 방지)
         self._config_loader.set_runtime_manager(self)
 
-    def set_game_config(
-        self, game_name: str, config_path: str, value: Any
-    ) -> bool:
+    def set_game_config(self, game_name: str, config_path: str, value: Any) -> bool:
         """게임 설정 값을 런타임에 변경
 
         Args:
@@ -35,9 +34,7 @@ class RuntimeConfigManager:
             if game_name not in self._overrides:
                 self._overrides[game_name] = {}
 
-            self._set_nested_value(
-                self._overrides[game_name], config_path, value
-            )
+            self._set_nested_value(self._overrides[game_name], config_path, value)
 
             # 설정 캐시 갱신
             self._config_loader.clear_cache()
@@ -46,9 +43,7 @@ class RuntimeConfigManager:
             if game_name == "omok":
                 self._refresh_omok_constants()
 
-            logger.info(
-                f"Runtime config updated: {game_name}.{config_path} = {value}"
-            )
+            logger.info(f"Runtime config updated: {game_name}.{config_path} = {value}")
             return True
 
         except Exception as e:
@@ -70,9 +65,7 @@ class RuntimeConfigManager:
             if "server" not in self._overrides:
                 self._overrides["server"] = {}
 
-            self._set_nested_value(
-                self._overrides["server"], config_path, value
-            )
+            self._set_nested_value(self._overrides["server"], config_path, value)
 
             # 설정 캐시 갱신
             self._config_loader.clear_cache()
@@ -80,9 +73,7 @@ class RuntimeConfigManager:
             # 서버 상수 객체 갱신
             self._refresh_server_constants()
 
-            logger.info(
-                f"Runtime server config updated: {config_path} = {value}"
-            )
+            logger.info(f"Runtime server config updated: {config_path} = {value}")
             return True
 
         except Exception as e:
@@ -200,10 +191,12 @@ class RuntimeConfigManager:
 
             # 오버라이드 적용
             if "server" in self._overrides:
-                config = self._deep_merge(config, self._overrides["server"])
+                merged_config = self._deep_merge(config, self._overrides["server"])
+            else:
+                merged_config = config
 
             # 상수 객체의 설정 갱신
-            SERVER_CONSTANTS._config = config
+            SERVER_CONSTANTS._config = merged_config
 
         except Exception as e:
             logger.error(f"Failed to refresh SERVER constants: {e}")
@@ -224,9 +217,7 @@ def get_runtime_config_manager() -> RuntimeConfigManager:
 # 편의 함수들
 def set_game_config(game_name: str, config_path: str, value: Any) -> bool:
     """게임 설정 값을 런타임에 변경."""
-    return get_runtime_config_manager().set_game_config(
-        game_name, config_path, value
-    )
+    return get_runtime_config_manager().set_game_config(game_name, config_path, value)
 
 
 def set_server_config(config_path: str, value: Any) -> bool:

@@ -1,4 +1,5 @@
 """FastAPI routes for the Lupin game website."""
+
 import json
 
 from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
@@ -163,7 +164,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 message = json.loads(data)
             except json.JSONDecodeError:
                 await websocket.send_text(
-                    json.dumps({"type": "error", "message": "잘못된 메시지 형식입니다."})
+                    json.dumps(
+                        {"type": "error", "message": "잘못된 메시지 형식입니다."}
+                    )
                 )
                 continue
 

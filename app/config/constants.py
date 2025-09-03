@@ -1,4 +1,5 @@
 """설정 기반 상수 정의."""
+
 from typing import Any, Dict
 
 from .config_loader import get_config, get_game_config
@@ -90,9 +91,7 @@ class GameConstants:
             return {
                 "undo_enabled": bool(features.get("undo_enabled", True)),
                 "restart_enabled": bool(features.get("restart_enabled", True)),
-                "spectator_enabled": bool(
-                    features.get("spectator_enabled", True)
-                ),
+                "spectator_enabled": bool(features.get("spectator_enabled", True)),
                 "chat_enabled": bool(features.get("chat_enabled", True)),
             }
         return {
@@ -172,12 +171,8 @@ class ServerConstants:
         if isinstance(room, dict):
             return {
                 "max_rooms": int(room.get("max_rooms", 500)),
-                "default_cleanup_delay": int(
-                    room.get("default_cleanup_delay", 1800)
-                ),
-                "inactive_threshold": int(
-                    room.get("inactive_threshold", 3600)
-                ),
+                "default_cleanup_delay": int(room.get("default_cleanup_delay", 1800)),
+                "inactive_threshold": int(room.get("inactive_threshold", 3600)),
             }
         return {
             "max_rooms": 500,
@@ -238,9 +233,7 @@ class ServerConstants:
 
             return {
                 "session_timeout": int(security.get("session_timeout", 86400)),
-                "max_message_size": int(
-                    security.get("max_message_size", 1024)
-                ),
+                "max_message_size": int(security.get("max_message_size", 1024)),
                 "rate_limit": rate_limit_config,
             }
         return {

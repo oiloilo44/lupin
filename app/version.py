@@ -1,4 +1,5 @@
 """애플리케이션 버전 관리."""
+
 import hashlib
 import logging
 import time

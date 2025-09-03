@@ -102,9 +102,7 @@ class ErrorHandler:
             }
 
     @staticmethod
-    def _log_error(
-        error: Exception, error_type: str, context: Dict[str, Any]
-    ) -> None:
+    def _log_error(error: Exception, error_type: str, context: Dict[str, Any]) -> None:
         """에러 로깅."""
         error_info = {
             "error_type": error_type,
@@ -118,13 +116,10 @@ class ErrorHandler:
             error_info.update(
                 {"error_code": error.error_code, "details": error.details}
             )
-            logger.warning(
-                f"Game Error: {json.dumps(error_info, ensure_ascii=False)}"
-            )
+            logger.warning(f"Game Error: {json.dumps(error_info, ensure_ascii=False)}")
         else:
             logger.error(
-                f"Unexpected Error: "
-                f"{json.dumps(error_info, ensure_ascii=False)}",
+                f"Unexpected Error: " f"{json.dumps(error_info, ensure_ascii=False)}",
                 exc_info=True,
             )
 
@@ -134,9 +129,7 @@ class ErrorHandler:
     ) -> bool:
         """WebSocket 에러 메시지 전송."""
         try:
-            response = WebSocketMessage(
-                type=MessageType.ERROR, data=error_data
-            )
+            response = WebSocketMessage(type=MessageType.ERROR, data=error_data)
             await websocket.send_text(json.dumps(response.to_json()))
             return True
         except Exception as e:

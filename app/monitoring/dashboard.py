@@ -1,4 +1,5 @@
 """모니터링 대시보드."""
+
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -57,15 +58,15 @@ class MonitoringDashboard:
         return {
             "timestamp": datetime.now().isoformat(),
             "system_health": {
-                "status": "healthy"
-                if total_errors < 10
-                else "warning"
-                if total_errors < 50
-                else "critical",
+                "status": (
+                    "healthy"
+                    if total_errors < 10
+                    else "warning" if total_errors < 50 else "critical"
+                ),
                 "total_errors": total_errors,
-                "error_rate": (total_errors / total_requests * 100)
-                if total_requests > 0
-                else 0,
+                "error_rate": (
+                    (total_errors / total_requests * 100) if total_requests > 0 else 0
+                ),
             },
             "performance": {
                 "avg_response_time_ms": round(avg_response_time, 2),
@@ -256,9 +257,11 @@ class MonitoringDashboard:
         if overview["system_health"]["error_rate"] > 5:
             alerts.append(
                 {
-                    "level": "warning"
-                    if overview["system_health"]["error_rate"] < 10
-                    else "critical",
+                    "level": (
+                        "warning"
+                        if overview["system_health"]["error_rate"] < 10
+                        else "critical"
+                    ),
                     "message": (
                         f"High error rate: "
                         f"{overview['system_health']['error_rate']:.2f}%"
@@ -273,9 +276,11 @@ class MonitoringDashboard:
         if overview["performance"]["avg_response_time_ms"] > 1000:
             alerts.append(
                 {
-                    "level": "warning"
-                    if overview["performance"]["avg_response_time_ms"] < 2000
-                    else "critical",
+                    "level": (
+                        "warning"
+                        if overview["performance"]["avg_response_time_ms"] < 2000
+                        else "critical"
+                    ),
                     "message": (
                         f"High response time: "
                         f"{overview['performance']['avg_response_time_ms']:.2f}ms"

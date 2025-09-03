@@ -39,10 +39,7 @@ class GameEventHandler:
     def handle_player_joined(self, event: PlayerJoinedEvent) -> None:
         """플레이어 입장 처리."""
         # 방에 충분한 플레이어가 모이면 게임 시작 가능 상태로 변경
-        if (
-            len(event.room.players) >= 2
-            and event.room.status == GameStatus.WAITING
-        ):
+        if len(event.room.players) >= 2 and event.room.status == GameStatus.WAITING:
             logger.debug(
                 f"Room {event.room_id} ready to start "
                 f"(players: {len(event.room.players)})"
@@ -65,8 +62,7 @@ class GameEventHandler:
         # 게임 중이었다면 게임 중단 처리
         if event.room.status == GameStatus.PLAYING:
             logger.info(
-                f"Player left during game in room {event.room_id}, "
-                "pausing game"
+                f"Player left during game in room {event.room_id}, " "pausing game"
             )
             # 게임 일시정지나 종료 로직은 여기서 처리 가능
 
@@ -122,9 +118,7 @@ class GameEventHandler:
             f"Total games in this room: {event.games_played_count}"
         )
 
-    def handle_room_cleanup_scheduled(
-        self, event: RoomCleanupScheduledEvent
-    ) -> None:
+    def handle_room_cleanup_scheduled(self, event: RoomCleanupScheduledEvent) -> None:
         """방 정리 스케줄링 처리."""
         if self.room_timer:
             # 실제 정리 타이머 설정은 RoomManager에서 처리

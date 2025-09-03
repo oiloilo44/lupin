@@ -86,7 +86,9 @@ class WebSocketHandler:
         session_id = room_manager.get_session_id_by_websocket(websocket)
 
         if not session_id:
-            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다", "validation")
+            await self._send_error(
+                websocket, "세션 정보를 찾을 수 없습니다", "validation"
+            )
             return
 
         result = await self.game_service.handle_move(
@@ -202,7 +204,9 @@ class WebSocketHandler:
         session_id = room_manager.get_session_id_by_websocket(websocket)
 
         if not session_id:
-            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다", "validation")
+            await self._send_error(
+                websocket, "세션 정보를 찾을 수 없습니다", "validation"
+            )
             return
 
         result = await self.game_service.handle_undo_request(
@@ -226,7 +230,9 @@ class WebSocketHandler:
         session_id = room_manager.get_session_id_by_websocket(websocket)
 
         if not session_id:
-            await self._send_error(websocket, "세션 정보를 찾을 수 없습니다", "validation")
+            await self._send_error(
+                websocket, "세션 정보를 찾을 수 없습니다", "validation"
+            )
             return
 
         result = await self.game_service.handle_undo_response(

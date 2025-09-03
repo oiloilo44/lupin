@@ -37,9 +37,7 @@ class RoomTimer:
 
         # 지연 시간 결정
         if delay_minutes is None:
-            delay_minutes = (
-                SERVER_CONSTANTS.room_config["default_cleanup_delay"] // 60
-            )
+            delay_minutes = SERVER_CONSTANTS.room_config["default_cleanup_delay"] // 60
 
         # 새 타이머 생성
         delay_seconds = delay_minutes * 60
@@ -48,9 +46,7 @@ class RoomTimer:
         )
         self.timers[room_id] = timer_task
 
-        logger.info(
-            f"Room cleanup scheduled for {room_id} in {delay_minutes} minutes"
-        )
+        logger.info(f"Room cleanup scheduled for {room_id} in {delay_minutes} minutes")
 
     async def _cleanup_after_delay(
         self,
@@ -125,9 +121,7 @@ class RoomTimer:
         Returns:
             활성 타이머가 있는 방 ID 목록.
         """
-        return [
-            room_id for room_id, timer in self.timers.items() if not timer.done()
-        ]
+        return [room_id for room_id, timer in self.timers.items() if not timer.done()]
 
     def cancel_all_timers(self) -> int:
         """모든 타이머 취소.

@@ -27,9 +27,7 @@ def find_player_by_session(
     return None
 
 
-def find_player_by_session_in_room(
-    room: Room, session_id: str
-) -> Optional[Player]:
+def find_player_by_session_in_room(room: Room, session_id: str) -> Optional[Player]:
     """특정 방에서 세션 ID로 플레이어 찾기
 
     Args:
@@ -103,9 +101,7 @@ def get_opponent_by_session(room: Room, session_id: str) -> Optional[Player]:
     return get_opponent_player(room, current_player.player_number)
 
 
-def find_player_by_session_or_number(
-    room: Room, identifier: str
-) -> Optional[Player]:
+def find_player_by_session_or_number(room: Room, identifier: str) -> Optional[Player]:
     """세션 ID 또는 플레이어 번호로 플레이어 찾기
 
     Args:

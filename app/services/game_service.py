@@ -38,7 +38,9 @@ class GameService:
             if not nickname or len(nickname) > 20:
                 raise ValueError("닉네임은 1-20자 사이여야 합니다")
             if any(char in nickname for char in ["<", ">", "&", '"', "'"]):
-                raise ValueError("닉네임에 특수문자(<, >, &, \", ')는 사용할 수 없습니다")
+                raise ValueError(
+                    "닉네임에 특수문자(<, >, &, \", ')는 사용할 수 없습니다"
+                )
 
             # 방 존재 확인
             room = self.room_manager.get_room(room_id)
@@ -73,7 +75,11 @@ class GameService:
             import logging
 
             logging.error(f"Join 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def handle_reconnect(
         self, websocket: WebSocket, room_id: str, session_id: str
@@ -115,8 +121,14 @@ class GameService:
         except Exception as e:
             import logging
 
-            logging.error(f"Reconnect 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            logging.error(
+                f"Reconnect 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            )
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def handle_move(
         self, websocket: WebSocket, room_id: str, move: Dict[str, Any], session_id: str
@@ -143,7 +155,11 @@ class GameService:
             import logging
 
             logging.error(f"Move 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def _handle_omok_move(
         self, room_id: str, room: Room, move: Dict[str, Any], session_id: str
@@ -203,7 +219,11 @@ class GameService:
             logging.error(
                 f"Restart request 처리 중 오류 in room {room_id}: {e}", exc_info=True
             )
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def handle_restart_response(
         self, websocket: WebSocket, room_id: str, accepted: bool
@@ -233,7 +253,11 @@ class GameService:
                 }
             else:
                 # 재시작 거부
-                return {"success": True, "accepted": False, "message": "재시작이 거부되었습니다"}
+                return {
+                    "success": True,
+                    "accepted": False,
+                    "message": "재시작이 거부되었습니다",
+                }
 
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
@@ -243,7 +267,11 @@ class GameService:
             logging.error(
                 f"Restart response 처리 중 오류 in room {room_id}: {e}", exc_info=True
             )
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def handle_undo_request(
         self, websocket: WebSocket, room_id: str, from_player: int, session_id: str
@@ -276,8 +304,14 @@ class GameService:
         except Exception as e:
             import logging
 
-            logging.error(f"Undo request 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            logging.error(
+                f"Undo request 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            )
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def handle_undo_response(
         self, websocket: WebSocket, room_id: str, accepted: bool, session_id: str
@@ -320,7 +354,11 @@ class GameService:
             else:
                 # 무르기 거부
                 room.undo_requests.clear()
-                return {"success": True, "accepted": False, "message": "무르기가 거부되었습니다"}
+                return {
+                    "success": True,
+                    "accepted": False,
+                    "message": "무르기가 거부되었습니다",
+                }
 
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
@@ -330,7 +368,11 @@ class GameService:
             logging.error(
                 f"Undo response 처리 중 오류 in room {room_id}: {e}", exc_info=True
             )
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     async def _handle_omok_undo(self, room_id: str, room: Room) -> bool:
         """오목 무르기 처리"""
@@ -402,8 +444,14 @@ class GameService:
         except Exception as e:
             import logging
 
-            logging.error(f"Chat message 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {"success": False, "error": "서버 오류가 발생했습니다", "error_type": "server"}
+            logging.error(
+                f"Chat message 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            )
+            return {
+                "success": False,
+                "error": "서버 오류가 발생했습니다",
+                "error_type": "server",
+            }
 
     def _validate_session_id(self, session_id: str) -> bool:
         """세션 ID 유효성 검증"""

@@ -1,4 +1,5 @@
 """설정 변경 추적 및 메트릭"""
+
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -282,11 +283,11 @@ class ConfigMetrics:
             "cache_hit_rate": round(hit_rate, 2),
             "error_rate": round(error_rate, 2),
             "total_changes": len(self._change_history),
-            "status": "healthy"
-            if health_score >= 80
-            else "warning"
-            if health_score >= 60
-            else "critical",
+            "status": (
+                "healthy"
+                if health_score >= 80
+                else "warning" if health_score >= 60 else "critical"
+            ),
         }
 
 
