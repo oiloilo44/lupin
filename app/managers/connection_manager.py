@@ -6,6 +6,7 @@ from typing import Dict, Optional, Set
 from fastapi import WebSocket
 
 from ..models import Room
+from ..utils.room_timer import RoomTimer
 
 
 class ConnectionManager:
@@ -21,6 +22,8 @@ class ConnectionManager:
         self.websocket_sessions: Dict[WebSocket, str] = {}
         # session_id -> room_id 매핑 (빠른 조회용)
         self.session_to_room: Dict[str, str] = {}
+        # 방 정리 타이머 관리
+        self.room_timer = RoomTimer()
 
     def add_connection(
         self, room_id: str, websocket: WebSocket, session_id: Optional[str] = None
@@ -248,3 +251,60 @@ class ConnectionManager:
 
         for session_id in sessions_to_remove:
             del self.session_to_room[session_id]
+
+    def schedule_room_cleanup(
+        self, room_id: str, cleanup_callback, delay_minutes: int = 30
+    ) -> None:
+        """방 정리 타이머 스케줄링
+
+        Args:
+            room_id: 방 ID
+            cleanup_callback: 정리 작업 콜백 함수
+            delay_minutes: 지연 시간 (분)
+        """
+        self.room_timer.schedule_room_cleanup(room_id, cleanup_callback, delay_minutes)
+
+    def cancel_room_timer(self, room_id: str) -> bool:
+        """방 타이머 취소
+
+        Args:
+            room_id: 방 ID
+
+        Returns:
+            취소 성공 여부
+        """
+        return self.room_timer.cancel_timer(room_id)
+
+    def is_room_waiting_for_reconnection(self, room_id: str) -> bool:
+        """방이 재접속 대기 중인지 확인 (타이머 활성 상태)
+
+        Args:
+            room_id: 방 ID
+
+        Returns:
+            재접속 대기 여부
+        """
+        return self.room_timer.has_timer(room_id)
+
+    def handle_room_empty(
+        self, room_id: str, room: Room, cleanup_callback, delay_minutes: int = 30
+    ) -> None:
+        """방이 비었을 때 처리 (타이머 스케줄링)
+
+        Args:
+            room_id: 방 ID
+            room: 방 객체
+            cleanup_callback: 정리 작업 콜백
+            delay_minutes: 지연 시간 (분)
+        """
+        # 게임이 진행 중이거나 대기 중인 경우에만 타이머 설정
+        if room.status.value in ["playing", "waiting"] and room.players:
+            self.schedule_room_cleanup(room_id, cleanup_callback, delay_minutes)
+
+    def handle_reconnection_success(self, room_id: str) -> None:
+        """재접속 성공 시 타이머 취소
+
+        Args:
+            room_id: 방 ID
+        """
+        self.cancel_room_timer(room_id)
