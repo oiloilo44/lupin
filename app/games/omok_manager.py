@@ -130,13 +130,6 @@ class OmokManager(BaseGameManager):
 
         return True, None, ""
 
-    def find_player_by_session(self, room: Room, session_id: str) -> Optional[Player]:
-        """세션 ID로 플레이어 찾기."""
-        for player in room.players:
-            if player.session_id == session_id:
-                return player
-        return None
-
     def _get_omok_game_state(self, room: Room) -> OmokGameState:
         """Room의 game_state Dict를 OmokGameState로 변환."""
         return OmokGameState(

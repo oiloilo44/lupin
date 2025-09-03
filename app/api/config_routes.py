@@ -2,7 +2,7 @@
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ..config import get_config, get_game_config
@@ -12,6 +12,7 @@ from ..config.runtime_config import (
     set_game_config,
     set_server_config,
 )
+from ..exceptions.game_exceptions import ServerError
 from ..monitoring.config_metrics import get_config_metrics
 
 router = APIRouter(prefix="/api/config", tags=["config"])
@@ -93,9 +94,9 @@ async def update_server_config(request: ConfigUpdateRequest) -> Dict[str, str]:
             "message": (f"서버 설정 업데이트 성공: {request.path} = {request.value}")
         }
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"서버 설정 업데이트 실패: {request.path}",
+        raise ServerError(
+            f"서버 설정 업데이트 실패: {request.path}",
+            details={"path": request.path, "value": request.value},
         )
 
 
@@ -139,9 +140,13 @@ async def update_game_config(
             )
         }
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(f"게임 설정 업데이트 실패: " f"{request.game_name}.{request.path}"),
+        raise ServerError(
+            f"게임 설정 업데이트 실패: {request.game_name}.{request.path}",
+            details={
+                "game_name": request.game_name,
+                "path": request.path,
+                "value": request.value,
+            },
         )
 
 

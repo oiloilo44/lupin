@@ -40,10 +40,7 @@ def find_player_by_session_in_room(room: Room, session_id: str) -> Optional[Play
     if not session_id or not room:
         return None
 
-    for player in room.players:
-        if player.session_id == session_id:
-            return player
-    return None
+    return room.find_player_by_session(session_id)
 
 
 def find_player_by_number(room: Room, player_number: int) -> Optional[Player]:

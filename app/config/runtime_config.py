@@ -188,12 +188,13 @@ class RuntimeConfigManager:
         try:
             # 현재 설정 다시 로드
             config = self._config_loader.get_server_config()
+            config_dict = config.to_dict()  # AppConfig를 dict로 변환
 
             # 오버라이드 적용
             if "server" in self._overrides:
-                merged_config = self._deep_merge(config, self._overrides["server"])
+                merged_config = self._deep_merge(config_dict, self._overrides["server"])
             else:
-                merged_config = config
+                merged_config = config_dict
 
             # 상수 객체의 설정 갱신
             SERVER_CONSTANTS._config = merged_config

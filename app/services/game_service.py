@@ -166,7 +166,7 @@ class GameService:
     ) -> Dict[str, Any]:
         """오목 이동 처리"""
         omok_manager = self.room_manager.get_game_manager(GameType.OMOK)
-        player = omok_manager.find_player_by_session(room, session_id)
+        player = room.find_player_by_session(session_id)
         if not player:
             raise ValueError("플레이어 정보를 찾을 수 없습니다")
 
@@ -283,8 +283,7 @@ class GameService:
                 raise ValueError("무르기를 할 수 없는 상태입니다")
 
             # 플레이어 검증
-            game_manager = self.room_manager.get_game_manager(room.game_type)
-            requester_player = game_manager.find_player_by_session(room, session_id)
+            requester_player = room.find_player_by_session(session_id)
             if not requester_player:
                 raise ValueError("플레이어 정보를 찾을 수 없습니다")
 
