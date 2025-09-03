@@ -14,7 +14,7 @@ services:
     labels:
       # Traefik 리버스 프록시 설정 (기존 설정 유지)
       - traefik.enable=true
-      - traefik.http.routers.lupin.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.lupin.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`) || Host(`qqqqee.com`) || Host(`www.qqqqee.com`)
       - traefik.http.routers.lupin.tls=true
       - traefik.http.routers.lupin.entrypoints=web,websecure
       - traefik.http.routers.lupin.tls.certresolver=mytlschallenge
