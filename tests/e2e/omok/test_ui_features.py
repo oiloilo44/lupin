@@ -9,6 +9,8 @@ scenarios.md의 S4 시나리오를 체계적으로 검증:
 헬퍼 함수를 활용한 개선된 버전
 """
 
+import os
+
 import pytest
 
 from ...conftest import CONTEXT_CONFIG, TEST_CONFIG
@@ -205,8 +207,17 @@ class TestS4ExcelStealth:
             pass
 
         # 최종 상태 스크린샷
-        await page.screenshot(path="stealth_mode_final.png")
+        screenshot_path = "stealth_mode_final.png"
+        await page.screenshot(path=screenshot_path)
         print("SUCCESS: 종합 스텔스 모드 테스트 완료")
+
+        # 테스트 완료 후 이미지 파일 삭제
+        try:
+            if os.path.exists(screenshot_path):
+                os.remove(screenshot_path)
+                print(f"INFO: 테스트 이미지 파일 삭제됨: {screenshot_path}")
+        except OSError:
+            pass  # 삭제 실패해도 테스트는 통과
 
 
 class TestS4AccessibilityAndUsability:
@@ -246,8 +257,17 @@ class TestS4AccessibilityAndUsability:
                 "모바일 최적화 요소 발견",
             )
 
-            await page.screenshot(path="mobile_view.png")
+            screenshot_path = "mobile_view.png"
+            await page.screenshot(path=screenshot_path)
             print("SUCCESS: 모바일 반응형 테스트 완료")
+
+            # 테스트 완료 후 이미지 파일 삭제
+            try:
+                if os.path.exists(screenshot_path):
+                    os.remove(screenshot_path)
+                    print(f"INFO: 테스트 이미지 파일 삭제됨: {screenshot_path}")
+            except OSError:
+                pass  # 삭제 실패해도 테스트는 통과
 
         finally:
             await context.close()
