@@ -42,4 +42,8 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Node.js & TypeScript
+static/node_modules/
+static/dist/
+
 /*.md
