@@ -43,7 +43,9 @@ logs/
 Thumbs.db
 
 # Node.js & TypeScript
+node_modules/
 static/node_modules/
 static/dist/
+*.tsbuildinfo
 
 /*.md

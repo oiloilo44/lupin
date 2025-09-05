@@ -3,19 +3,81 @@
  * 클래스 기반 상태 관리 및 서버-클라이언트 통신
  */
 
+import type { GameState, WebSocketMessage, PlayerInfo, RoomState } from '../types/game';
+
+// Global declarations for functions defined elsewhere
+declare function showGlobalToast(title: string, message: string, type: string, duration?: number): void;
+declare function showModal(title: string, body: string, buttons: Array<{ text: string; class?: string; onclick: () => void }>): void;
+declare function hideModal(): void;
+declare function createConfetti(): void;
+declare function displayChatMessage(nickname: string, message: string, timestamp: number, player_number: number): void;
+
+// Window interface 확장은 globals.d.ts에서 처리됨
+
+interface OmokGameState {
+    gameState: GameState;
+    myPlayerNumber: number | null;
+    players: PlayerInfo[];
+    gameEnded: boolean;
+    gameStarted: boolean;
+    waitingForRestart: boolean;
+    lastMove: { x: number; y: number } | null;
+    hoverPosition: [number, number] | null;
+    winningLine: Array<{ x: number; y: number }> | null;
+    gameStats: { moves: number; startTime: number | null };
+    waitingForUndo: boolean;
+    winnerNumber: number | null;
+    myNickname: string | null;
+    moveHistory: Array<{ move: { x: number; y: number }; player: number }>;
+    previewStone: { x: number; y: number; color: number } | null;
+    isDragging: boolean;
+    showingConfirmButtons: boolean;
+}
+
+interface ConnectionState {
+    status: 'connected' | 'connecting' | 'disconnected' | 'reconnecting';
+    reconnectAttempts: number;
+    maxReconnectAttempts: number;
+    reconnectTimeout: number | null;
+}
+
 class OmokGameClient {
-    constructor(roomId, sessionId, initialGameState = null, playerData = null) {
+    private roomId: string;
+    private sessionId: string;
+    private ws: WebSocket | null;
+    private canvas: HTMLCanvasElement | null;
+    private ctx: CanvasRenderingContext2D | null;
+    private state: OmokGameState;
+    private connection: ConnectionState;
+    private gameTimer: number | null;
+    private pendingSessionData: any | null;
+    private touchStartPos: { x: number; y: number } | null = null;
+    private touchStartTime: number | null = null;
+    private handleBeforeUnload: () => void = () => {};
+
+    constructor(roomId: string, sessionId: string, initialGameState: GameState | null = null, playerData: any = null) {
         this.roomId = roomId;
         this.sessionId = sessionId;
         this.ws = null;
-        this.canvas = document.getElementById('omokBoard');
+        this.canvas = document.getElementById('omokBoard') as HTMLCanvasElement;
         this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
 
         // 게임 상태 - 서버에서 전달된 초기 상태 사용
         this.state = {
             gameState: initialGameState || {
-                board: Array(15).fill(null).map(() => Array(15).fill(0)),
-                current_player: 1
+                board: (() => {
+                    const board: number[][] = [];
+                    for (let i = 0; i < 15; i++) {
+                        const row: number[] = [];
+                        for (let j = 0; j < 15; j++) {
+                            row.push(0);
+                        }
+                        board.push(row);
+                    }
+                    return board;
+                })(),
+                current_player: 1,
+                game_status: 'waiting'
             },
             myPlayerNumber: playerData ? playerData.player_number : null,
             players: [],
@@ -51,7 +113,7 @@ class OmokGameClient {
         this.pendingSessionData = null;
     }
 
-    initialize() {
+    initialize(): void {
         if (!this.canvas || !this.ctx) {
             console.error('Canvas element not found');
             return;
@@ -64,7 +126,9 @@ class OmokGameClient {
         this.adjustMobileLayout();
     }
 
-    setupEventListeners() {
+    setupEventListeners(): void {
+        if (!this.canvas) return;
+
         // 캔버스 이벤트
         this.canvas.addEventListener('click', (e) => this.handleGameMove(e));
         this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
@@ -104,18 +168,20 @@ class OmokGameClient {
     }
 
     // HTML 이스케이프 함수 (XSS 방지)
-    escapeHtml(text) {
+    escapeHtml(text: string): string {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
     // 연결 상태 업데이트 - 개선된 UI
-    updateConnectionStatus(status, text) {
+    updateConnectionStatus(status: ConnectionState['status'], text?: string): void {
         this.connection.status = status;
         const statusElement = document.getElementById('connectionStatus');
         const iconElement = document.getElementById('connectionIcon');
         const textElement = document.getElementById('connectionText');
+
+        if (!statusElement || !iconElement || !textElement) return;
 
         if (status === 'connected') {
             statusElement.style.display = 'none';
@@ -162,7 +228,7 @@ class OmokGameClient {
     }
 
     // WebSocket 연결
-    connectWebSocket(isReconnect = false) {
+    connectWebSocket(isReconnect: boolean = false): void {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${wsProtocol}//${window.location.host}/ws/${this.roomId}`;
 
@@ -174,16 +240,20 @@ class OmokGameClient {
                 this.connection.reconnectAttempts = 0;
 
                 // 채팅 연결 설정
-                if (this.state.myNickname && typeof setupChatConnection === 'function') {
-                    setupChatConnection(this.ws, this.state.myNickname);
+                if (this.state.myNickname && typeof (window as any).setupChatConnection === 'function') {
+                    (window as any).setupChatConnection(this.ws, this.state.myNickname);
                 }
 
-                if (isReconnect) {
+                if (isReconnect && this.ws) {
                     const message = {
                         type: 'reconnect',
                         session_id: this.sessionId
                     };
-                    this.ws.send(JSON.stringify(message));
+                    if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                 }
             };
 
@@ -198,7 +268,7 @@ class OmokGameClient {
     }
 
     // 재연결 로직 - 개선된 지수 백오프
-    attemptReconnect() {
+    attemptReconnect(): void {
         if (this.connection.reconnectAttempts >= this.connection.maxReconnectAttempts) {
             this.updateConnectionStatus('disconnected', '재연결 실패');
             this.showReconnectionFailedDialog();
@@ -231,7 +301,7 @@ class OmokGameClient {
     }
 
     // 재연결 실패 다이얼로그
-    showReconnectionFailedDialog() {
+    showReconnectionFailedDialog(): void {
         this.showModal('연결 실패',
             `서버와의 연결을 복구할 수 없습니다.<br><br>` +
             `<strong>해결 방법:</strong><br>` +
@@ -253,7 +323,7 @@ class OmokGameClient {
     }
 
     // 수동 재연결
-    manualReconnect() {
+    manualReconnect(): void {
         // 재연결 상태 초기화
         this.connection.reconnectAttempts = 0;
         if (this.connection.reconnectTimeout) {
@@ -266,7 +336,7 @@ class OmokGameClient {
     }
 
     // WebSocket 정리 메서드
-    cleanupWebSocket() {
+    cleanupWebSocket(): void {
         if (this.ws) {
             // 이벤트 핸들러 제거
             this.ws.onopen = null;
@@ -298,7 +368,7 @@ class OmokGameClient {
     }
 
     // 게임 정리 메서드 (페이지 이동 시 호출)
-    cleanup() {
+    cleanup(): void {
         this.cleanupWebSocket();
 
         // 게임별 정리 작업
@@ -317,19 +387,19 @@ class OmokGameClient {
     }
 
     // 이벤트 리스너 제거
-    removeEventListeners() {
+    removeEventListeners(): void {
         if (this.canvas) {
-            this.canvas.removeEventListener('click', this.handleCanvasClick);
+            this.canvas.removeEventListener('click', (this as any).handleCanvasClick);
             this.canvas.removeEventListener('touchstart', this.handleTouchStart);
             this.canvas.removeEventListener('touchmove', this.handleTouchMove);
             this.canvas.removeEventListener('touchend', this.handleTouchEnd);
         }
 
         window.removeEventListener('beforeunload', this.handleBeforeUnload);
-        window.removeEventListener('resize', this.handleResize);
+        window.removeEventListener('resize', (this as any).handleResize);
     }
 
-    handleWebSocketClose(event) {
+    handleWebSocketClose(event: CloseEvent): void {
 
         if (event.code === 1000) {
             this.updateConnectionStatus('disconnected', '연결 종료');
@@ -345,18 +415,18 @@ class OmokGameClient {
         setTimeout(() => this.attemptReconnect(), 1000);
     }
 
-    handleWebSocketError(error) {
+    handleWebSocketError(error: Event): void {
         console.error('WebSocket error:', error);
     }
 
-    handleConnectionFailure() {
+    handleConnectionFailure(): void {
         this.updateConnectionStatus('disconnected', '연결 실패');
         setTimeout(() => this.attemptReconnect(), 2000);
     }
 
     // 오목판 그리기
-    drawBoard() {
-        if (!this.ctx) return;
+    drawBoard(): void {
+        if (!this.ctx || !this.canvas) return;
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -387,13 +457,17 @@ class OmokGameClient {
         }
 
         // 중심점 그리기
-        const centerPoints = [[7, 7], [3, 3], [3, 11], [11, 3], [11, 11]];
-        this.ctx.fillStyle = '#000';
-        centerPoints.forEach(([x, y]) => {
-            this.ctx.beginPath();
-            this.ctx.arc(margin + x * cellSize, margin + y * cellSize, Math.max(2, cellSize / 10), 0, 2 * Math.PI);
-            this.ctx.fill();
-        });
+        if (this.ctx) {
+            const centerPoints = [[7, 7], [3, 3], [3, 11], [11, 3], [11, 11]];
+            this.ctx.fillStyle = '#000';
+            centerPoints.forEach(([x, y]) => {
+                if (this.ctx) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(margin + x * cellSize, margin + y * cellSize, Math.max(2, cellSize / 10), 0, 2 * Math.PI);
+                    this.ctx.fill();
+                }
+            });
+        }
 
         // 모바일 터치 미리보기 돌
         if (this.state.previewStone) {
@@ -412,7 +486,7 @@ class OmokGameClient {
         }
 
         // 마우스 오버 미리보기 (데스크톱용)
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
         if (this.state.hoverPosition && !this.state.gameEnded && this.state.players.length === 2 &&
             myPlayer && this.state.gameState.current_player === myPlayer.color && !this.state.previewStone) {
             const [hx, hy] = this.state.hoverPosition;
@@ -481,10 +555,12 @@ class OmokGameClient {
     }
 
     // 이벤트 위치 계산
-    getEventPosition(e) {
+    getEventPosition(e: MouseEvent | Touch): { x: number; y: number } {
+        if (!this.canvas) throw new Error('Canvas not initialized');
+
         const rect = this.canvas.getBoundingClientRect();
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const clientX = 'clientX' in e ? e.clientX : 0;
+        const clientY = 'clientY' in e ? e.clientY : 0;
 
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
@@ -503,8 +579,8 @@ class OmokGameClient {
     }
 
     // 마우스 호버 처리
-    handleHover(e) {
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+    handleHover(e: MouseEvent | Touch): void {
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
         if (!this.ws || this.state.players.length < 2 || !myPlayer ||
             this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             this.state.hoverPosition = null;
@@ -522,13 +598,13 @@ class OmokGameClient {
         }
     }
 
-    clearHover() {
+    clearHover(): void {
         this.state.hoverPosition = null;
         this.drawBoard();
     }
 
     // 터치 시작 처리
-    handleTouchStart(e) {
+    handleTouchStart(e: TouchEvent): void {
         e.preventDefault();
         const touch = e.touches[0];
         this.touchStartPos = this.getEventPosition(touch);
@@ -537,7 +613,7 @@ class OmokGameClient {
     }
 
     // 터치 이동 처리
-    handleTouchMove(e) {
+    handleTouchMove(e: TouchEvent): void {
         e.preventDefault();
         if (e.touches.length === 1) {
             const touch = e.touches[0];
@@ -561,7 +637,7 @@ class OmokGameClient {
     }
 
     // 터치 종료 처리
-    handleTouchEnd(e) {
+    handleTouchEnd(e: TouchEvent): void {
         e.preventDefault();
 
         // 터치 시작 위치와 시간 확인
@@ -604,7 +680,8 @@ class OmokGameClient {
     }
 
     // 터치 피드백 애니메이션
-    showTouchFeedback(x, y) {
+    showTouchFeedback(x: number, y: number): void {
+        if (!this.canvas || !this.ctx) return;
         if (x >= 0 && x < 15 && y >= 0 && y < 15) {
             // Canvas에 임시 하이라이트 효과
             const boardSize = Math.min(this.canvas.width, this.canvas.height);
@@ -614,14 +691,16 @@ class OmokGameClient {
             const pixelX = margin + x * cellSize;
             const pixelY = margin + y * cellSize;
 
-            this.ctx.save();
-            this.ctx.strokeStyle = '#3b82f6';
-            this.ctx.lineWidth = 3;
-            this.ctx.globalAlpha = 0.5;
-            this.ctx.beginPath();
-            this.ctx.arc(pixelX, pixelY, cellSize / 3, 0, Math.PI * 2);
-            this.ctx.stroke();
-            this.ctx.restore();
+            if (this.ctx) {
+                this.ctx.save();
+                this.ctx.strokeStyle = '#3b82f6';
+                this.ctx.lineWidth = 3;
+                this.ctx.globalAlpha = 0.5;
+                this.ctx.beginPath();
+                this.ctx.arc(pixelX, pixelY, cellSize / 3, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
 
             // 200ms 후 보드 다시 그리기
             setTimeout(() => this.drawBoard(), 200);
@@ -629,14 +708,14 @@ class OmokGameClient {
     }
 
     // 게임 이동 처리
-    handleGameMove(e) {
+    handleGameMove(e: MouseEvent): void {
         // 터치 디바이스에서는 미리보기 시스템 사용, 마우스 클릭에서는 즉시 이동
         if (e.type === 'touchend' || e.type === 'touchstart') {
             return; // 터치 이벤트는 별도 핸들러에서 처리
         }
 
         e.preventDefault();
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
         if (!this.ws || this.state.players.length < 2 || !myPlayer ||
             this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             return;
@@ -653,20 +732,24 @@ class OmokGameClient {
                 move: {x, y},
                 session_id: this.sessionId
             };
-            this.ws.send(JSON.stringify(message));
+            if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
         }
     }
 
     // WebSocket 메시지 처리
-    handleWebSocketMessage(event) {
+    handleWebSocketMessage(event: MessageEvent): void {
         const serverData = JSON.parse(event.data);
 
         // 서버의 snake_case 데이터를 그대로 사용 (필요시 개별 변환)
         const data = serverData;
 
         // 채팅 메시지 처리 (원본 서버 데이터 사용)
-        if (typeof handleChatWebSocketMessage === 'function') {
-            handleChatWebSocketMessage(serverData);
+        if (typeof (window as any).handleChatWebSocketMessage === 'function') {
+            (window as any).handleChatWebSocketMessage(serverData);
         }
 
         switch (data.type) {
@@ -712,7 +795,7 @@ class OmokGameClient {
         }
     }
 
-    handleRoomUpdate(data) {
+    handleRoomUpdate(data: any): void {
         this.state.players = data.room.players;
 
         // 게임 상태 업데이트
@@ -722,10 +805,11 @@ class OmokGameClient {
 
         // myPlayerNumber 설정 (항상 확인)
         if (this.state.myPlayerNumber === null || this.state.myPlayerNumber === undefined) {
-            const currentNickname = this.state.myNickname || document.getElementById('nicknameInput')?.value?.trim();
+            const nicknameInput = document.getElementById('nicknameInput') as HTMLInputElement;
+            const currentNickname = this.state.myNickname || nicknameInput?.value?.trim();
             if (currentNickname) {
-                const myPlayer = this.state.players.find(p => p.nickname === currentNickname);
-                if (myPlayer) {
+                const myPlayer = this.state.players.find((p: PlayerInfo) => p.nickname === currentNickname);
+                if (myPlayer && myPlayer.player_number !== undefined) {
                     this.state.myPlayerNumber = myPlayer.player_number;
                     this.saveGameSession({
                         nickname: currentNickname,
@@ -758,7 +842,7 @@ class OmokGameClient {
         }
     }
 
-    handleReconnectSuccess(data) {
+    handleReconnectSuccess(data: any): void {
         if (data.room && data.room.game_state) {
             this.state.gameState = data.room.game_state;
         }
@@ -781,7 +865,7 @@ class OmokGameClient {
 
         // 채팅 히스토리 복원
         if (data.room && data.room.chatHistory && typeof displayChatMessage === 'function') {
-            data.room.chatHistory.forEach(msg => {
+            data.room.chatHistory.forEach((msg: any) => {
                 displayChatMessage(msg.nickname, msg.message, msg.timestamp, msg.player_number);
             });
         }
@@ -815,7 +899,7 @@ class OmokGameClient {
         this.showToast('재연결 성공', '게임 상태가 복원되었습니다.', 'success');
     }
 
-    handleGameUpdate(data) {
+    handleGameUpdate(data: any): void {
         const previousPlayer = this.state.gameState.current_player;
         this.state.gameState = data.game_state;
 
@@ -846,7 +930,7 @@ class OmokGameClient {
         }
     }
 
-    handleGameEnd(data) {
+    handleGameEnd(data: any): void {
         this.state.gameEnded = true;
         this.state.gameState = data.game_state;
         if (data.lastMove) {
@@ -868,7 +952,7 @@ class OmokGameClient {
         setTimeout(() => this.showWinModal(data.winner, isMyWin), 1500);
     }
 
-    handleError(data) {
+    handleError(data: any): void {
         console.error('서버 오류:', data.message);
 
         // 오류 타입별 처리
@@ -912,7 +996,7 @@ class OmokGameClient {
     }
 
     // 총 수 횟수 재계산
-    recalculateMoveCount() {
+    recalculateMoveCount(): void {
         this.state.gameStats.moves = 0;
         for (let y = 0; y < 15; y++) {
             for (let x = 0; x < 15; x++) {
@@ -924,7 +1008,7 @@ class OmokGameClient {
     }
 
     // UI 업데이트
-    updateUI() {
+    updateUI(): void {
         // 플레이어 목록 업데이트
         const playerList = document.getElementById('playerList');
         if (playerList) {
@@ -952,7 +1036,7 @@ class OmokGameClient {
         if (currentTurn) {
             // 플레이어가 2명이고 게임이 진행 중일 때만 표시
             if (this.state.players.length === 2 && !this.state.gameEnded) {
-                const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.current_player);
+                const currentPlayer = this.state.players.find((p: PlayerInfo) => p.color === this.state.gameState.current_player);
                 if (currentPlayer) {
                     const isMyTurn = currentPlayer.player_number === this.state.myPlayerNumber;
                     currentTurn.innerHTML = `
@@ -975,7 +1059,7 @@ class OmokGameClient {
         // 게임 정보 업데이트
         const moveCountEl = document.getElementById('moveCount');
         if (moveCountEl) {
-            moveCountEl.textContent = this.state.gameStats.moves;
+            moveCountEl.textContent = this.state.gameStats.moves.toString();
         }
 
         const gameTimeEl = document.getElementById('gameTime');
@@ -991,7 +1075,7 @@ class OmokGameClient {
     }
 
     // 게임 영역 표시
-    showGameArea() {
+    showGameArea(): void {
         const nicknameForm = document.getElementById('nicknameForm');
         const existingGameForm = document.getElementById('existingGameForm');
         const gameArea = document.getElementById('gameArea');
@@ -1002,11 +1086,15 @@ class OmokGameClient {
     }
 
     // 모달 시스템
-    showModal(title, body, buttons = []) {
-        document.getElementById('modalTitle').textContent = title;
-        document.getElementById('modalBody').innerHTML = body;
-
+    showModal(title: string, body: string, buttons: Array<{ text: string; class?: string; onclick: () => void }> = []): void {
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
         const footer = document.getElementById('modalFooter');
+
+        if (!modalTitle || !modalBody || !footer) return;
+
+        modalTitle.textContent = title;
+        modalBody.innerHTML = body;
         footer.innerHTML = '';
 
         buttons.forEach(button => {
@@ -1017,15 +1105,18 @@ class OmokGameClient {
             footer.appendChild(btn);
         });
 
-        document.getElementById('modalOverlay').classList.add('show');
+        const modalOverlay = document.getElementById('modalOverlay');
+        if (modalOverlay) modalOverlay.classList.add('show');
     }
 
-    hideModal() {
-        document.getElementById('modalOverlay').classList.remove('show');
+    hideModal(): void {
+        const modalOverlay = document.getElementById('modalOverlay');
+        if (modalOverlay) modalOverlay.classList.remove('show');
     }
 
-    showWinModal(winner, isMyWin) {
+    showWinModal(winner: number, isMyWin: boolean): void {
         const modal = document.getElementById('modal');
+        if (!modal) return;
         modal.className = 'modal win-modal';
 
         const icon = isMyWin ? '🎉' : '😔';
@@ -1053,21 +1144,21 @@ class OmokGameClient {
     }
 
     // 토스트 알림 시스템 (전역 함수 사용)
-    showToast(title, message, type = 'info', duration = 3000) {
+    showToast(title: string, message: string, type: string = 'info', duration: number = 3000): void {
         if (typeof showGlobalToast === 'function') {
             showGlobalToast(title, message, type, duration);
         }
     }
 
     // 색종이 효과 (전역 함수 사용)
-    createConfetti() {
+    createConfetti(): void {
         if (typeof createConfetti === 'function') {
             window.createConfetti();
         }
     }
 
     // 승리 애니메이션
-    startWinAnimation() {
+    startWinAnimation(): void {
         let animationFrame = 0;
         const animate = () => {
             this.drawBoard();
@@ -1080,7 +1171,7 @@ class OmokGameClient {
     }
 
     // 게임 타이머
-    startGameTimer() {
+    startGameTimer(): void {
         if (this.gameTimer) clearInterval(this.gameTimer);
         this.gameTimer = setInterval(() => {
             if (this.state.gameStats.startTime && !this.state.gameEnded) {
@@ -1090,11 +1181,11 @@ class OmokGameClient {
     }
 
     // 모바일 레이아웃 조정
-    adjustMobileLayout() {
+    adjustMobileLayout(): void {
         const gameLayout = document.getElementById('gameLayout');
         const isMobile = window.innerWidth <= 768;
 
-        if (!this.canvas) return;
+        if (!this.canvas || !gameLayout) return;
 
         // 모바일 감지 시 body에 클래스 추가
         if (isMobile) {
@@ -1139,19 +1230,20 @@ class OmokGameClient {
     }
 
     // 게임 정보 패널 접기 기능 설정
-    setupCollapsiblePanels() {
+    setupCollapsiblePanels(): void {
         const panels = document.querySelectorAll('.game-info-panel');
         panels.forEach(panel => {
             // 이미 이벤트가 등록되어 있는지 확인
-            if (!panel.dataset.collapsible) {
-                panel.dataset.collapsible = 'true';
+            const htmlPanel = panel as HTMLElement;
+            if (!htmlPanel.dataset.collapsible) {
+                htmlPanel.dataset.collapsible = 'true';
 
                 // 헤더만 클릭 가능하도록 설정 (채팅 패널 포함)
                 const header = panel.querySelector('h4');
                 if (header) {
-                    header.style.cursor = 'pointer';
-                    header.style.position = 'relative';
-                    panel.style.position = 'relative';
+                    (header as HTMLElement).style.cursor = 'pointer';
+                    (header as HTMLElement).style.position = 'relative';
+                    (panel as HTMLElement).style.position = 'relative';
 
                     header.addEventListener('click', (e) => {
                         e.preventDefault();
@@ -1184,8 +1276,10 @@ class OmokGameClient {
 
 
     // 게임 참여
-    joinGame() {
-        const nickname = document.getElementById('nicknameInput').value.trim();
+    joinGame(): void {
+        const nicknameElement = document.getElementById('nicknameInput') as HTMLInputElement;
+        if (!nicknameElement) return;
+        const nickname = nicknameElement.value.trim();
         if (!nickname) {
             this.showModal('알림', '닉네임을 입력해주세요.', [
                 { text: '확인', class: 'primary', onclick: () => this.hideModal() }
@@ -1198,15 +1292,19 @@ class OmokGameClient {
 
         const waitForConnection = () => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                if (typeof setupChatConnection === 'function') {
-                    setupChatConnection(this.ws, nickname);
+                if (typeof (window as any).setupChatConnection === 'function') {
+                    (window as any).setupChatConnection(this.ws, nickname);
                 }
                 const message = {
                     type: 'join',
                     nickname: nickname,
                     session_id: this.sessionId
                 };
+                if (this.ws) {
+            if (this.ws) {
                 this.ws.send(JSON.stringify(message));
+            }
+        }
 
                 this.saveGameSession({
                     nickname: nickname,
@@ -1222,10 +1320,10 @@ class OmokGameClient {
     }
 
     // 무르기 버튼 업데이트
-    updateUndoButton() {
-        const undoButton = document.getElementById('undoButton');
+    updateUndoButton(): void {
+        const undoButton = document.getElementById('undoButton') as HTMLButtonElement;
         if (undoButton) {
-            const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+            const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
             // 무르기는 자신의 턴과 상대방 턴 모두에서 가능
             // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
             // 케이스 2: 상대방 턴에 자신의 마지막 수 무르기 요청
@@ -1237,15 +1335,15 @@ class OmokGameClient {
     }
 
     // 게임 버튼들 상태 업데이트
-    updateGameButtons() {
+    updateGameButtons(): void {
         this.updateUndoButton();
         this.updateRestartButton();
         this.updateGameActionButtons();
     }
 
     // 재시작 버튼 업데이트
-    updateRestartButton() {
-        const restartButton = document.getElementById('restartButton');
+    updateRestartButton(): void {
+        const restartButton = document.getElementById('restartButton') as HTMLButtonElement;
         if (restartButton) {
             // 게임이 시작되었거나 끝났을 때 다시하기 가능 (대기 중이 아닌 경우)
             const canRestart = this.ws && (this.state.gameStarted || this.state.gameEnded) && !this.state.waitingForRestart;
@@ -1261,13 +1359,13 @@ class OmokGameClient {
     }
 
     // 게임 액션 버튼들 업데이트
-    updateGameActionButtons() {
+    updateGameActionButtons(): void {
         const buttons = ['joinButton', 'continueButton', 'newGameButton'];
         const gameArea = document.getElementById('gameArea');
         const joinArea = document.getElementById('joinArea');
 
         buttons.forEach(buttonId => {
-            const button = document.getElementById(buttonId);
+            const button = document.getElementById(buttonId) as HTMLButtonElement;
             if (button) {
                 button.style.opacity = button.disabled ? '0.5' : '1';
             }
@@ -1282,7 +1380,7 @@ class OmokGameClient {
     }
 
     // 잘못된 수에 대한 시각적 피드백 (보드 흔들림 효과)
-    showInvalidMoveAnimation() {
+    showInvalidMoveAnimation(): void {
         if (!this.canvas) return;
 
         const originalTransform = this.canvas.style.transform;
@@ -1297,13 +1395,17 @@ class OmokGameClient {
         let shakeStep = 0;
         const shakeAnimation = () => {
             if (shakeStep >= shakeCount) {
-                this.canvas.style.transform = originalTransform;
-                this.canvas.style.transition = '';
+                if (this.canvas) {
+                    this.canvas.style.transform = originalTransform;
+                    this.canvas.style.transition = '';
+                }
                 return;
             }
 
             const offset = shakeStep % 2 === 0 ? shakeIntensity : -shakeIntensity;
-            this.canvas.style.transform = `${originalTransform} translateX(${offset}px)`;
+            if (this.canvas) {
+                this.canvas.style.transform = `${originalTransform} translateX(${offset}px)`;
+            }
             shakeStep++;
 
             setTimeout(shakeAnimation, shakeInterval);
@@ -1317,21 +1419,23 @@ class OmokGameClient {
         this.canvas.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.5)';
 
         setTimeout(() => {
-            this.canvas.style.border = originalBorder;
-            this.canvas.style.boxShadow = '';
+            if (this.canvas) {
+                this.canvas.style.border = originalBorder;
+                this.canvas.style.boxShadow = '';
+            }
         }, shakeDuration);
     }
 
 
     // 턴 표시 강화
-    showTurnIndicator() {
+    showTurnIndicator(): void {
         // 플레이어 수와 게임 상태 확인
         if (this.state.players.length !== 2 || this.state.gameEnded) return;
 
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
         if (!myPlayer || this.state.myPlayerNumber === null || this.state.myPlayerNumber === undefined) return;
 
-        const currentPlayer = this.state.players.find(p => p.color === this.state.gameState.current_player);
+        const currentPlayer = this.state.players.find((p: PlayerInfo) => p.color === this.state.gameState.current_player);
         if (!currentPlayer) return;
 
         const isMyTurn = this.state.gameState.current_player === myPlayer.color;
@@ -1343,7 +1447,9 @@ class OmokGameClient {
             if (this.canvas) {
                 this.canvas.style.boxShadow = '0 0 15px rgba(0, 150, 255, 0.3)';
                 setTimeout(() => {
-                    this.canvas.style.boxShadow = '';
+                    if (this.canvas) {
+                        this.canvas.style.boxShadow = '';
+                    }
                 }, 3000);
             }
         } else {
@@ -1355,7 +1461,7 @@ class OmokGameClient {
     }
 
     // 게임 재시작 요청
-    requestRestart() {
+    requestRestart(): void {
         if (!this.ws || this.state.waitingForRestart) {
             return;
         }
@@ -1374,16 +1480,20 @@ class OmokGameClient {
             from: this.state.myPlayerNumber,
             session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(message));
+        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
     }
 
     // 무르기 요청
-    requestUndo() {
+    requestUndo(): void {
         if (!this.ws || this.state.waitingForUndo || this.state.gameEnded || this.state.gameStats.moves === 0) {
             return;
         }
 
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
 
         // 무르기 가능한 상황인지 확인 (자신/상대방 수 모두 무르기 가능)
         // 케이스 1: 자신의 턴에 상대방 마지막 수 무르기 요청
@@ -1395,11 +1505,15 @@ class OmokGameClient {
             from: this.state.myPlayerNumber,
             session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(message));
+        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
     }
 
     // 로컬 스토리지 관리
-    saveGameSession(sessionData) {
+    saveGameSession(sessionData: any): void {
         try {
             localStorage.setItem('omokGameSession', JSON.stringify({
                 ...sessionData,
@@ -1411,7 +1525,7 @@ class OmokGameClient {
         }
     }
 
-    loadGameSession() {
+    loadGameSession(): any | null {
         try {
             const data = localStorage.getItem('omokGameSession');
             if (!data) return null;
@@ -1434,7 +1548,7 @@ class OmokGameClient {
         }
     }
 
-    clearGameSession() {
+    clearGameSession(): void {
         try {
             localStorage.removeItem('omokGameSession');
         } catch (error) {
@@ -1443,7 +1557,7 @@ class OmokGameClient {
     }
 
     // 기존 세션 확인
-    checkExistingSession() {
+    checkExistingSession(): void {
         const hostNickname = sessionStorage.getItem('hostNickname');
         const localSession = this.loadGameSession();
 
@@ -1453,7 +1567,7 @@ class OmokGameClient {
         }
 
         if (hostNickname) {
-            const nicknameInput = document.getElementById('nicknameInput');
+            const nicknameInput = document.getElementById('nicknameInput') as HTMLInputElement;
             if (nicknameInput) {
                 nicknameInput.value = hostNickname;
                 setTimeout(() => {
@@ -1465,19 +1579,23 @@ class OmokGameClient {
         }
     }
 
-    showExistingGamePrompt(sessionData) {
-        document.getElementById('nicknameForm').style.display = 'none';
-        document.getElementById('existingGameForm').style.display = 'block';
-
+    showExistingGamePrompt(sessionData: any): void {
+        const nicknameForm = document.getElementById('nicknameForm');
         const existingGameForm = document.getElementById('existingGameForm');
-        existingGameForm.querySelector('p').innerHTML =
-            `진행 중인 게임이 있습니다. (${this.escapeHtml(sessionData.nickname)})<br>어떻게 하시겠습니까?`;
+
+        if (nicknameForm) nicknameForm.style.display = 'none';
+        if (existingGameForm) existingGameForm.style.display = 'block';
+
+        const paragraph = existingGameForm?.querySelector('p');
+        if (paragraph) {
+            paragraph.innerHTML = `진행 중인 게임이 있습니다. (${this.escapeHtml(sessionData.nickname)})<br>어떻게 하시겠습니까?`;
+        }
 
         this.pendingSessionData = sessionData;
     }
 
     // 기존 게임 이어하기
-    continueExistingGame() {
+    continueExistingGame(): void {
         if (this.pendingSessionData) {
             this.state.myNickname = this.pendingSessionData.nickname;
             this.state.myPlayerNumber = this.pendingSessionData.player_number;
@@ -1490,7 +1608,11 @@ class OmokGameClient {
                         type: 'reconnect',
                         session_id: this.pendingSessionData.sessionId
                     };
-                    this.ws.send(JSON.stringify(message));
+                    if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                 } else {
                     setTimeout(waitForConnection, 100);
                 }
@@ -1501,15 +1623,17 @@ class OmokGameClient {
     }
 
     // 새 게임 시작
-    startNewGame() {
+    startNewGame(): void {
         this.clearGameSession();
-        document.getElementById('existingGameForm').style.display = 'none';
-        document.getElementById('nicknameForm').style.display = 'block';
+        const existingGameForm = document.getElementById('existingGameForm');
+        const nicknameForm = document.getElementById('nicknameForm');
+        if (existingGameForm) existingGameForm.style.display = 'none';
+        if (nicknameForm) nicknameForm.style.display = 'block';
         this.pendingSessionData = null;
     }
 
     // 방 나가기
-    confirmLeaveRoom() {
+    confirmLeaveRoom(): void {
         this.showModal(
             '방 나가기',
             '정말로 게임에서 나가시겠습니까?<br>진행 중인 게임이 종료됩니다.',
@@ -1535,8 +1659,8 @@ class OmokGameClient {
     }
 
     // 나머지 핸들러들 (간소화된 버전)
-    handleRestartRequest(data) {
-        const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
+    handleRestartRequest(data: any): void {
+        const requesterName = this.state.players.find((p: PlayerInfo) => p.player_number === data.from)?.nickname || '상대방';
 
         if (data.is_requester) {
             // 요청자에게는 모달 대신 토스트로 알림
@@ -1555,7 +1679,11 @@ class OmokGameClient {
                             accepted: false,
                             session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(message));
+                        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                     }
                 },
                 {
@@ -1568,14 +1696,18 @@ class OmokGameClient {
                             accepted: true,
                             session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(message));
+                        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                     }
                 }
             ]);
         }
     }
 
-    handleRestartAccepted(data) {
+    handleRestartAccepted(data: any): void {
         this.state.gameEnded = false;
         this.state.gameStarted = true;
         this.state.waitingForRestart = false;
@@ -1603,7 +1735,7 @@ class OmokGameClient {
         this.showToast('게임 재시작', `${gameNum}번째 게임이 시작되었습니다!`, 'success');
     }
 
-    handleRestartRejected() {
+    handleRestartRejected(): void {
         this.state.waitingForRestart = false;
         this.updateRestartButton(); // 버튼 상태 업데이트 추가
         this.showModal('알림', '상대방이 재시작을 거부했습니다.', [
@@ -1611,8 +1743,8 @@ class OmokGameClient {
         ]);
     }
 
-    handleUndoRequest(data) {
-        const requesterName = this.state.players.find(p => p.player_number === data.from)?.nickname || '상대방';
+    handleUndoRequest(data: any): void {
+        const requesterName = this.state.players.find((p: PlayerInfo) => p.player_number === data.from)?.nickname || '상대방';
 
         if (data.is_requester) {
             // 요청자에게는 토스트 메시지로만 알림 (팝업 없음)
@@ -1620,7 +1752,7 @@ class OmokGameClient {
         } else {
             // 무르기 대상 수 확인 (마지막 수가 누구 것인지)
             const lastMove = this.state.moveHistory?.[this.state.moveHistory.length - 1];
-            const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+            const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
             let message;
 
             if (lastMove && myPlayer && lastMove.player === myPlayer.color) {
@@ -1642,7 +1774,11 @@ class OmokGameClient {
                             accepted: false,
                             session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(message));
+                        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                     }
                 },
                 {
@@ -1655,14 +1791,18 @@ class OmokGameClient {
                             accepted: true,
                             session_id: this.sessionId
                         };
-                        this.ws.send(JSON.stringify(message));
+                        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
                     }
                 }
             ]);
         }
     }
 
-    handleUndoAccepted(data) {
+    handleUndoAccepted(data: any): void {
         this.state.gameState = data.game_state;
         this.recalculateMoveCount();
         this.state.waitingForUndo = false;
@@ -1680,7 +1820,7 @@ class OmokGameClient {
         this.showToast('무르기 성공', '마지막 수가 취소되었습니다.', 'success');
     }
 
-    handleUndoRejected() {
+    handleUndoRejected(): void {
         this.state.waitingForUndo = false;
         this.showModal('알림', '상대방이 무르기를 거부했습니다.', [
             { text: '확인', class: 'primary', onclick: () => this.hideModal() }
@@ -1688,8 +1828,8 @@ class OmokGameClient {
     }
 
     // 모바일 터치 미리보기 시스템
-    showPreviewStone(x, y) {
-        const myPlayer = this.state.players.find(p => p.player_number === this.state.myPlayerNumber);
+    showPreviewStone(x: number, y: number): boolean {
+        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
         if (!myPlayer || this.state.gameState.current_player !== myPlayer.color ||
             this.state.gameEnded || this.state.gameState.board[y][x] !== 0) {
             return false;
@@ -1706,7 +1846,7 @@ class OmokGameClient {
         return true;
     }
 
-    updatePreviewStone(x, y) {
+    updatePreviewStone(x: number, y: number): boolean {
         if (!this.state.previewStone) return false;
 
         if (x >= 0 && x < 15 && y >= 0 && y < 15 && this.state.gameState.board[y][x] === 0) {
@@ -1718,7 +1858,7 @@ class OmokGameClient {
         return false;
     }
 
-    showConfirmButtons() {
+    showConfirmButtons(): void {
         const buttonsElement = document.getElementById('mobileConfirmButtons');
         if (buttonsElement) {
             buttonsElement.style.display = 'flex';
@@ -1726,7 +1866,7 @@ class OmokGameClient {
         }
     }
 
-    hideConfirmButtons() {
+    hideConfirmButtons(): void {
         const buttonsElement = document.getElementById('mobileConfirmButtons');
         if (buttonsElement) {
             buttonsElement.style.display = 'none';
@@ -1734,7 +1874,7 @@ class OmokGameClient {
         }
     }
 
-    confirmMove() {
+    confirmMove(): void {
         if (!this.state.previewStone || !this.ws) return;
 
         const { x, y } = this.state.previewStone;
@@ -1745,13 +1885,17 @@ class OmokGameClient {
             move: {x, y},
             session_id: this.sessionId
         };
-        this.ws.send(JSON.stringify(message));
+        if (this.ws) {
+            if (this.ws) {
+                this.ws.send(JSON.stringify(message));
+            }
+        }
 
         // 미리보기 정리
         this.cancelMove();
     }
 
-    cancelMove() {
+    cancelMove(): void {
         this.state.previewStone = null;
         this.state.isDragging = false;
         this.hideConfirmButtons();
@@ -1759,7 +1903,7 @@ class OmokGameClient {
     }
 
     // 모바일 튜토리얼 관련 메서드들
-    checkAndShowMobileTutorial() {
+    checkAndShowMobileTutorial(): void {
         const TUTORIAL_STORAGE_KEY = 'omokMobileTutorialShown';
         const isMobile = window.innerWidth <= 768;
         const tutorialShown = localStorage.getItem(TUTORIAL_STORAGE_KEY);
@@ -1772,7 +1916,7 @@ class OmokGameClient {
         }
     }
 
-    showMobileTutorial() {
+    showMobileTutorial(): void {
         const tutorialContent = `
             <div style="text-align: center; line-height: 1.6; padding: 10px;">
                 <div style="font-size: 18px; margin-bottom: 15px;">📱 모바일 오목 사용법</div>
@@ -1800,13 +1944,13 @@ class OmokGameClient {
             </div>
         `;
 
-        showModal('모바일 사용법 안내', tutorialContent, [
+        this.showModal('모바일 사용법 안내', tutorialContent, [
             {
                 text: '다시 보지 않기',
                 class: 'secondary',
                 onclick: () => {
                     this.markTutorialAsShown();
-                    hideModal();
+                    this.hideModal();
                 }
             },
             {
@@ -1814,50 +1958,50 @@ class OmokGameClient {
                 class: 'primary',
                 onclick: () => {
                     this.markTutorialAsShown();
-                    hideModal();
+                    this.hideModal();
                 }
             }
         ]);
     }
 
-    markTutorialAsShown() {
+    markTutorialAsShown(): void {
         const TUTORIAL_STORAGE_KEY = 'omokMobileTutorialShown';
         localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
     }
 }
 
 // HTML에서 호출되는 전역 함수들
-function joinGame() {
+function joinGame(): void {
     if (window.omokClient) {
         window.omokClient.joinGame();
     }
 }
 
-function continueExistingGame() {
+function continueExistingGame(): void {
     if (window.omokClient) {
         window.omokClient.continueExistingGame();
     }
 }
 
-function startNewGame() {
+function startNewGame(): void {
     if (window.omokClient) {
         window.omokClient.startNewGame();
     }
 }
 
-function requestRestart() {
+function requestRestart(): void {
     if (window.omokClient) {
         window.omokClient.requestRestart();
     }
 }
 
-function requestUndo() {
+function requestUndo(): void {
     if (window.omokClient) {
         window.omokClient.requestUndo();
     }
 }
 
-function confirmLeaveRoom() {
+function confirmLeaveRoom(): void {
     if (window.omokClient) {
         window.omokClient.confirmLeaveRoom();
     }
