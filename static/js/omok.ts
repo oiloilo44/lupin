@@ -4,6 +4,7 @@
  */
 
 import type { GameState, WebSocketMessage, PlayerInfo, RoomState } from '../types/game';
+import { OmokRenderer } from './omok/OmokRenderer';
 
 // Global declarations for functions defined elsewhere
 declare function showGlobalToast(title: string, message: string, type: string, duration?: number): void;
@@ -46,7 +47,7 @@ class OmokGameClient {
     private sessionId: string;
     private ws: WebSocket | null;
     private canvas: HTMLCanvasElement | null;
-    private ctx: CanvasRenderingContext2D | null;
+    private renderer: OmokRenderer | null;
     private state: OmokGameState;
     private connection: ConnectionState;
     private gameTimer: number | null;
@@ -60,7 +61,7 @@ class OmokGameClient {
         this.sessionId = sessionId;
         this.ws = null;
         this.canvas = document.getElementById('omokBoard') as HTMLCanvasElement;
-        this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+        this.renderer = this.canvas ? new OmokRenderer(this.canvas) : null;
 
         // 게임 상태 - 서버에서 전달된 초기 상태 사용
         this.state = {
@@ -114,14 +115,14 @@ class OmokGameClient {
     }
 
     initialize(): void {
-        if (!this.canvas || !this.ctx) {
-            console.error('Canvas element not found');
+        if (!this.canvas || !this.renderer) {
+            console.error('Canvas or renderer not found');
             return;
         }
 
         this.setupEventListeners();
         this.checkExistingSession();
-        this.drawBoard();
+        this.renderer.drawBoard(this.state);
         this.startGameTimer();
         this.adjustMobileLayout();
     }
@@ -424,158 +425,19 @@ class OmokGameClient {
         setTimeout(() => this.attemptReconnect(), 2000);
     }
 
-    // 오목판 그리기
-    drawBoard(): void {
-        if (!this.ctx || !this.canvas) return;
-
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        const boardSize = Math.min(this.canvas.width, this.canvas.height);
-        const cellSize = (boardSize - 60) / 14;
-        const margin = (boardSize - cellSize * 14) / 2;
-
-        // 배경
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // 격자 그리기
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = Math.max(1, cellSize / 30);
-
-        for (let i = 0; i < 15; i++) {
-            // 세로선
-            this.ctx.beginPath();
-            this.ctx.moveTo(margin + i * cellSize, margin);
-            this.ctx.lineTo(margin + i * cellSize, boardSize - margin);
-            this.ctx.stroke();
-
-            // 가로선
-            this.ctx.beginPath();
-            this.ctx.moveTo(margin, margin + i * cellSize);
-            this.ctx.lineTo(boardSize - margin, margin + i * cellSize);
-            this.ctx.stroke();
-        }
-
-        // 중심점 그리기
-        if (this.ctx) {
-            const centerPoints = [[7, 7], [3, 3], [3, 11], [11, 3], [11, 11]];
-            this.ctx.fillStyle = '#000';
-            centerPoints.forEach(([x, y]) => {
-                if (this.ctx) {
-                    this.ctx.beginPath();
-                    this.ctx.arc(margin + x * cellSize, margin + y * cellSize, Math.max(2, cellSize / 10), 0, 2 * Math.PI);
-                    this.ctx.fill();
-                }
-            });
-        }
-
-        // 모바일 터치 미리보기 돌
-        if (this.state.previewStone) {
-            const px = this.state.previewStone.x;
-            const py = this.state.previewStone.y;
-            if (px >= 0 && px < 15 && py >= 0 && py < 15 && this.state.gameState.board[py][px] === 0) {
-                const stoneRadius = Math.max(8, cellSize * 0.4);
-                this.ctx.beginPath();
-                this.ctx.arc(margin + px * cellSize, margin + py * cellSize, stoneRadius, 0, 2 * Math.PI);
-                this.ctx.fillStyle = this.state.previewStone.color === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)';
-                this.ctx.fill();
-                this.ctx.strokeStyle = this.state.previewStone.color === 1 ? 'rgba(0, 0, 0, 0.7)' : 'rgba(51, 51, 51, 0.7)';
-                this.ctx.lineWidth = Math.max(2, cellSize / 20);
-                this.ctx.stroke();
-            }
-        }
-
-        // 마우스 오버 미리보기 (데스크톱용)
-        const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
-        if (this.state.hoverPosition && !this.state.gameEnded && this.state.players.length === 2 &&
-            myPlayer && this.state.gameState.current_player === myPlayer.color && !this.state.previewStone) {
-            const [hx, hy] = this.state.hoverPosition;
-            if (this.state.gameState.board[hy][hx] === 0) {
-                const stoneRadius = Math.max(8, cellSize * 0.4);
-                this.ctx.beginPath();
-                this.ctx.arc(margin + hx * cellSize, margin + hy * cellSize, stoneRadius, 0, 2 * Math.PI);
-                this.ctx.fillStyle = this.state.gameState.current_player === 1 ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)';
-                this.ctx.fill();
-                this.ctx.strokeStyle = this.state.gameState.current_player === 1 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(51, 51, 51, 0.5)';
-                this.ctx.lineWidth = Math.max(1, cellSize / 30);
-                this.ctx.stroke();
-            }
-        }
-
-        // 돌 그리기
-        const stoneRadius = Math.max(8, cellSize * 0.4);
-        for (let y = 0; y < 15; y++) {
-            for (let x = 0; x < 15; x++) {
-                if (this.state.gameState.board[y][x] !== 0) {
-                    this.ctx.save();
-
-                    const centerX = margin + x * cellSize;
-                    const centerY = margin + y * cellSize;
-
-                    this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, stoneRadius, 0, 2 * Math.PI);
-                    this.ctx.fillStyle = this.state.gameState.board[y][x] === 1 ? '#000' : '#fff';
-                    this.ctx.fill();
-                    this.ctx.strokeStyle = '#333';
-                    this.ctx.lineWidth = Math.max(1, cellSize / 30);
-                    this.ctx.stroke();
-
-                    // 최근 둔 수 강조
-                    if (this.state.lastMove && this.state.lastMove.x === x && this.state.lastMove.y === y) {
-                        this.ctx.beginPath();
-                        this.ctx.arc(centerX, centerY, stoneRadius * 1.25, 0, 2 * Math.PI);
-                        this.ctx.strokeStyle = '#ff4444';
-                        this.ctx.lineWidth = Math.max(2, cellSize / 15);
-                        this.ctx.stroke();
-                    }
-
-                    // 승리 라인 강조
-                    if (this.state.winningLine && this.state.winningLine.some(pos => pos.x === x && pos.y === y)) {
-                        this.ctx.beginPath();
-                        this.ctx.arc(centerX, centerY, stoneRadius * 1.5, 0, 2 * Math.PI);
-                        this.ctx.strokeStyle = '#ffd700';
-                        this.ctx.lineWidth = Math.max(3, cellSize / 10);
-                        this.ctx.stroke();
-
-                        // 반짝이는 효과
-                        const time = Date.now();
-                        const pulse = Math.sin(time / 200) * 0.3 + 0.7;
-                        this.ctx.beginPath();
-                        this.ctx.arc(centerX, centerY, stoneRadius * pulse, 0, 2 * Math.PI);
-                        this.ctx.fillStyle = this.state.gameState.board[y][x] === 1 ?
-                            `rgba(255, 215, 0, ${0.3 * pulse})` :
-                            `rgba(255, 215, 0, ${0.2 * pulse})`;
-                        this.ctx.fill();
-                    }
-
-                    this.ctx.restore();
-                }
-            }
+    // 렌더링을 OmokRenderer에 위임
+    private drawBoard(): void {
+        if (this.renderer) {
+            this.renderer.drawBoard(this.state);
         }
     }
 
-    // 이벤트 위치 계산
+    // 이벤트 위치 계산 - OmokRenderer에 위임
     getEventPosition(e: MouseEvent | Touch): { x: number; y: number } {
-        if (!this.canvas) throw new Error('Canvas not initialized');
-
-        const rect = this.canvas.getBoundingClientRect();
-        const clientX = 'clientX' in e ? e.clientX : 0;
-        const clientY = 'clientY' in e ? e.clientY : 0;
-
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-
-        const canvasX = (clientX - rect.left) * scaleX;
-        const canvasY = (clientY - rect.top) * scaleY;
-
-        const boardSize = Math.min(this.canvas.width, this.canvas.height);
-        const cellSize = (boardSize - 60) / 14;
-        const margin = (boardSize - cellSize * 14) / 2;
-
-        return {
-            x: Math.round((canvasX - margin) / cellSize),
-            y: Math.round((canvasY - margin) / cellSize)
-        };
+        if (this.renderer) {
+            return this.renderer.getEventPosition(e);
+        }
+        throw new Error('Renderer not initialized');
     }
 
     // 마우스 호버 처리
@@ -680,28 +542,10 @@ class OmokGameClient {
     }
 
     // 터치 피드백 애니메이션
+    // 터치 피드백 - OmokRenderer에 위임
     showTouchFeedback(x: number, y: number): void {
-        if (!this.canvas || !this.ctx) return;
-        if (x >= 0 && x < 15 && y >= 0 && y < 15) {
-            // Canvas에 임시 하이라이트 효과
-            const boardSize = Math.min(this.canvas.width, this.canvas.height);
-            const cellSize = (boardSize - 60) / 14;
-            const margin = (boardSize - cellSize * 14) / 2;
-
-            const pixelX = margin + x * cellSize;
-            const pixelY = margin + y * cellSize;
-
-            if (this.ctx) {
-                this.ctx.save();
-                this.ctx.strokeStyle = '#3b82f6';
-                this.ctx.lineWidth = 3;
-                this.ctx.globalAlpha = 0.5;
-                this.ctx.beginPath();
-                this.ctx.arc(pixelX, pixelY, cellSize / 3, 0, Math.PI * 2);
-                this.ctx.stroke();
-                this.ctx.restore();
-            }
-
+        if (this.renderer) {
+            this.renderer.showTouchFeedback(x, y);
             // 200ms 후 보드 다시 그리기
             setTimeout(() => this.drawBoard(), 200);
         }
@@ -1193,15 +1037,11 @@ class OmokGameClient {
             gameLayout.style.flexDirection = 'column';
             gameLayout.style.gap = '10px';
 
-            // Canvas 크기 최적화
+            // Canvas 크기 최적화 - OmokRenderer에 위임
             const maxSize = Math.min(window.innerWidth - 40, window.innerHeight * 0.4, 320);
-            this.canvas.style.width = maxSize + 'px';
-            this.canvas.style.height = maxSize + 'px';
-            this.canvas.width = maxSize;
-            this.canvas.height = maxSize;
-
-            this.canvas.style.transform = '';
-            this.canvas.style.transformOrigin = '';
+            if (this.renderer) {
+                this.renderer.adjustCanvasSize(maxSize, maxSize);
+            }
 
             // 게임 정보 패널 접기 기능 추가 (채팅 패널 포함)
             this.setupCollapsiblePanels();
@@ -1215,12 +1055,10 @@ class OmokGameClient {
             gameLayout.style.flexDirection = 'row';
             gameLayout.style.gap = '20px';
 
-            this.canvas.style.width = '450px';
-            this.canvas.style.height = '450px';
-            this.canvas.width = 450;
-            this.canvas.height = 450;
-            this.canvas.style.transform = '';
-            this.canvas.style.transformOrigin = '';
+            // PC Canvas 크기 - OmokRenderer에 위임
+            if (this.renderer) {
+                this.renderer.adjustCanvasSize(450, 450);
+            }
 
             // PC에서도 채팅 패널 접기 기능 적용
             this.setupCollapsiblePanels();
@@ -1379,51 +1217,11 @@ class OmokGameClient {
         }
     }
 
-    // 잘못된 수에 대한 시각적 피드백 (보드 흔들림 효과)
+    // 잘못된 수에 대한 시각적 피드백 - OmokRenderer에 위임
     showInvalidMoveAnimation(): void {
-        if (!this.canvas) return;
-
-        const originalTransform = this.canvas.style.transform;
-        this.canvas.style.transition = 'transform 0.1s ease-in-out';
-
-        // 흔들림 애니메이션
-        const shakeIntensity = 5;
-        const shakeDuration = 300;
-        const shakeCount = 6;
-        const shakeInterval = shakeDuration / shakeCount;
-
-        let shakeStep = 0;
-        const shakeAnimation = () => {
-            if (shakeStep >= shakeCount) {
-                if (this.canvas) {
-                    this.canvas.style.transform = originalTransform;
-                    this.canvas.style.transition = '';
-                }
-                return;
-            }
-
-            const offset = shakeStep % 2 === 0 ? shakeIntensity : -shakeIntensity;
-            if (this.canvas) {
-                this.canvas.style.transform = `${originalTransform} translateX(${offset}px)`;
-            }
-            shakeStep++;
-
-            setTimeout(shakeAnimation, shakeInterval);
-        };
-
-        shakeAnimation();
-
-        // 붉은 테두리 효과
-        const originalBorder = this.canvas.style.border;
-        this.canvas.style.border = '3px solid #ff4444';
-        this.canvas.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.5)';
-
-        setTimeout(() => {
-            if (this.canvas) {
-                this.canvas.style.border = originalBorder;
-                this.canvas.style.boxShadow = '';
-            }
-        }, shakeDuration);
+        if (this.renderer) {
+            this.renderer.shakeCanvas();
+        }
     }
 
 
@@ -1443,14 +1241,9 @@ class OmokGameClient {
         if (isMyTurn) {
             this.showToast('당신의 차례', '돌을 놓을 위치를 선택하세요', 'info', 3000);
 
-            // 보드에 미묘한 하이라이트 효과
-            if (this.canvas) {
-                this.canvas.style.boxShadow = '0 0 15px rgba(0, 150, 255, 0.3)';
-                setTimeout(() => {
-                    if (this.canvas) {
-                        this.canvas.style.boxShadow = '';
-                    }
-                }, 3000);
+            // 보드에 미묘한 하이라이트 효과 - OmokRenderer에 위임
+            if (this.renderer) {
+                this.renderer.highlightCanvas(true);
             }
         } else {
             // 상대방 턴일 때도 알림 표시
