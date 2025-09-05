@@ -6,6 +6,7 @@
 import type { GameState, WebSocketMessage, PlayerInfo, RoomState } from '../types/game';
 import { OmokRenderer } from './omok/OmokRenderer';
 import { OmokUIHandler } from './omok/OmokUIHandler';
+import { WebSocketService } from './omok/WebSocketService';
 
 // Global declarations for functions defined elsewhere
 declare function showGlobalToast(title: string, message: string, type: string, duration?: number): void;
@@ -46,7 +47,7 @@ interface ConnectionState {
 class OmokGameClient {
     private roomId: string;
     private sessionId: string;
-    private ws: WebSocket | null;
+    private webSocketService: WebSocketService;
     private canvas: HTMLCanvasElement | null;
     private renderer: OmokRenderer | null;
     private uiHandler: OmokUIHandler;
@@ -61,10 +62,21 @@ class OmokGameClient {
     constructor(roomId: string, sessionId: string, initialGameState: GameState | null = null, playerData: any = null) {
         this.roomId = roomId;
         this.sessionId = sessionId;
-        this.ws = null;
         this.canvas = document.getElementById('omokBoard') as HTMLCanvasElement;
         this.renderer = this.canvas ? new OmokRenderer(this.canvas) : null;
         this.uiHandler = new OmokUIHandler();
+
+        // WebSocketService 초기화 (콜백 패턴)
+        this.webSocketService = new WebSocketService(roomId, sessionId, {
+            onConnectionStatusUpdate: (status, text) => this.updateConnectionStatus(status, text),
+            onMessage: (event) => this.handleWebSocketMessage(event),
+            onReconnectionFailed: () => this.showReconnectionFailedDialog(),
+            setupChatConnection: (ws, nickname) => {
+                if (typeof (window as any).setupChatConnection === 'function') {
+                    (window as any).setupChatConnection(ws, nickname);
+                }
+            }
+        });
 
         // 게임 상태 - 서버에서 전달된 초기 상태 사용
         this.state = {
@@ -182,44 +194,11 @@ class OmokGameClient {
         this.uiHandler.updateConnectionStatus(status, text, this.connection.reconnectAttempts, this.connection.maxReconnectAttempts);
     }
 
-    // WebSocket 연결
+    // WebSocket 연결 - WebSocketService에 위임
     connectWebSocket(isReconnect: boolean = false): void {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws/${this.roomId}`;
-
-        try {
-            this.ws = new WebSocket(wsUrl);
-
-            this.ws.onopen = () => {
-                this.updateConnectionStatus('connected');
-                this.connection.reconnectAttempts = 0;
-
-                // 채팅 연결 설정
-                if (this.state.myNickname && typeof (window as any).setupChatConnection === 'function') {
-                    (window as any).setupChatConnection(this.ws, this.state.myNickname);
-                }
-
-                if (isReconnect && this.ws) {
-                    const message = {
-                        type: 'reconnect',
-                        session_id: this.sessionId
-                    };
-                    if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
-                }
-            };
-
-            this.ws.onmessage = (event) => this.handleWebSocketMessage(event);
-            this.ws.onclose = (event) => this.handleWebSocketClose(event);
-            this.ws.onerror = (error) => this.handleWebSocketError(error);
-
-        } catch (error) {
-            console.error('WebSocket connection failed:', error);
-            this.handleConnectionFailure();
-        }
+        // 현재 닉네임을 글로벌에 설정 (WebSocketService에서 사용)
+        (window as any).currentNickname = this.state.myNickname;
+        this.webSocketService.connect(isReconnect);
     }
 
     // 재연결 로직 - 개선된 지수 백오프
@@ -290,34 +269,10 @@ class OmokGameClient {
         this.connectWebSocket(true);
     }
 
-    // WebSocket 정리 메서드
+    // WebSocket 정리 - WebSocketService에 완전 위임
     cleanupWebSocket(): void {
-        if (this.ws) {
-            // 이벤트 핸들러 제거
-            this.ws.onopen = null;
-            this.ws.onmessage = null;
-            this.ws.onclose = null;
-            this.ws.onerror = null;
-
-            // WebSocket 상태가 연결 중이거나 열린 상태인 경우에만 close 호출
-            if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
-                try {
-                    this.ws.close(1000, 'Client cleanup');
-                } catch (error) {
-                    console.warn('WebSocket close error during cleanup:', error);
-                }
-            }
-
-            this.ws = null;
-        }
-
-        // 재연결 타이머 정리
-        if (this.connection.reconnectTimeout) {
-            clearTimeout(this.connection.reconnectTimeout);
-            this.connection.reconnectTimeout = null;
-        }
-
-        // 연결 상태 초기화
+        this.webSocketService.cleanup();
+        // 로컬 연결 상태도 초기화
         this.connection.status = 'disconnected';
         this.connection.reconnectAttempts = 0;
     }
@@ -354,30 +309,8 @@ class OmokGameClient {
         window.removeEventListener('resize', (this as any).handleResize);
     }
 
-    handleWebSocketClose(event: CloseEvent): void {
-
-        if (event.code === 1000) {
-            this.updateConnectionStatus('disconnected', '연결 종료');
-            return;
-        }
-
-        this.updateConnectionStatus('disconnected', '연결 끊김');
-
-        if (this.connection.reconnectTimeout) {
-            clearTimeout(this.connection.reconnectTimeout);
-        }
-
-        setTimeout(() => this.attemptReconnect(), 1000);
-    }
-
-    handleWebSocketError(error: Event): void {
-        console.error('WebSocket error:', error);
-    }
-
-    handleConnectionFailure(): void {
-        this.updateConnectionStatus('disconnected', '연결 실패');
-        setTimeout(() => this.attemptReconnect(), 2000);
-    }
+    // WebSocket 이벤트 핸들러들은 WebSocketService로 이동
+    // (기존 이벤트 핸들러들은 WebSocketService 콜백으로 처리됨)
 
     // 렌더링을 OmokRenderer에 위임
     private drawBoard(): void {
@@ -397,7 +330,7 @@ class OmokGameClient {
     // 마우스 호버 처리
     handleHover(e: MouseEvent | Touch): void {
         const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
-        if (!this.ws || this.state.players.length < 2 || !myPlayer ||
+        if (!this.webSocketService.isConnected() || this.state.players.length < 2 || !myPlayer ||
             this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             this.state.hoverPosition = null;
             this.drawBoard();
@@ -514,7 +447,7 @@ class OmokGameClient {
 
         e.preventDefault();
         const myPlayer = this.state.players.find((p: PlayerInfo) => p.player_number === this.state.myPlayerNumber);
-        if (!this.ws || this.state.players.length < 2 || !myPlayer ||
+        if (!this.webSocketService.isConnected() || this.state.players.length < 2 || !myPlayer ||
             this.state.gameState.current_player !== myPlayer.color || this.state.gameEnded) {
             return;
         }
@@ -530,11 +463,7 @@ class OmokGameClient {
                 move: {x, y},
                 session_id: this.sessionId
             };
-            if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+            this.webSocketService.sendMessage(message);
         }
     }
 
@@ -916,20 +845,14 @@ class OmokGameClient {
         this.connectWebSocket();
 
         const waitForConnection = () => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                if (typeof (window as any).setupChatConnection === 'function') {
-                    (window as any).setupChatConnection(this.ws, nickname);
-                }
+            if (this.webSocketService.isConnected()) {
+                // 채팅 연결은 WebSocketService 내부에서 처리됨
                 const message = {
                     type: 'join',
                     nickname: nickname,
                     session_id: this.sessionId
                 };
-                if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                this.webSocketService.sendMessage(message);
 
                 this.saveGameSession({
                     nickname: nickname,
@@ -946,7 +869,7 @@ class OmokGameClient {
 
     // 게임 버튼들 상태 업데이트 - UIHandler에 위임
     updateGameButtons(): void {
-        this.uiHandler.updateGameButtons(this.state, !!this.ws);
+        this.uiHandler.updateGameButtons(this.state, this.webSocketService.isConnected());
     }
 
     // 잘못된 수에 대한 시각적 피드백 - OmokRenderer에 위임
@@ -987,7 +910,7 @@ class OmokGameClient {
 
     // 게임 재시작 요청
     requestRestart(): void {
-        if (!this.ws || this.state.waitingForRestart) {
+        if (!this.webSocketService.isConnected() || this.state.waitingForRestart) {
             return;
         }
 
@@ -1005,16 +928,12 @@ class OmokGameClient {
             from: this.state.myPlayerNumber,
             session_id: this.sessionId
         };
-        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+        this.webSocketService.sendMessage(message);
     }
 
     // 무르기 요청
     requestUndo(): void {
-        if (!this.ws || this.state.waitingForUndo || this.state.gameEnded || this.state.gameStats.moves === 0) {
+        if (!this.webSocketService.isConnected() || this.state.waitingForUndo || this.state.gameEnded || this.state.gameStats.moves === 0) {
             return;
         }
 
@@ -1030,11 +949,7 @@ class OmokGameClient {
             from: this.state.myPlayerNumber,
             session_id: this.sessionId
         };
-        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+        this.webSocketService.sendMessage(message);
     }
 
     // 로컬 스토리지 관리
@@ -1118,16 +1033,12 @@ class OmokGameClient {
             this.connectWebSocket();
 
             const waitForConnection = () => {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                if (this.webSocketService.isConnected()) {
                     const message = {
                         type: 'reconnect',
                         session_id: this.pendingSessionData.sessionId
                     };
-                    if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                    this.webSocketService.sendMessage(message);
                 } else {
                     setTimeout(waitForConnection, 100);
                 }
@@ -1160,9 +1071,7 @@ class OmokGameClient {
                     class: 'primary',
                     onclick: () => {
                         this.clearGameSession();
-                        if (this.ws) {
-                            this.ws.close();
-                        }
+                        this.webSocketService.cleanup();
                         window.location.href = '/';
                     }
                 }
@@ -1191,11 +1100,7 @@ class OmokGameClient {
                             accepted: false,
                             session_id: this.sessionId
                         };
-                        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                        this.webSocketService.sendMessage(message);
                     }
                 },
                 {
@@ -1208,11 +1113,7 @@ class OmokGameClient {
                             accepted: true,
                             session_id: this.sessionId
                         };
-                        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                        this.webSocketService.sendMessage(message);
                     }
                 }
             ]);
@@ -1286,11 +1187,7 @@ class OmokGameClient {
                             accepted: false,
                             session_id: this.sessionId
                         };
-                        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                        this.webSocketService.sendMessage(message);
                     }
                 },
                 {
@@ -1303,11 +1200,7 @@ class OmokGameClient {
                             accepted: true,
                             session_id: this.sessionId
                         };
-                        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+                        this.webSocketService.sendMessage(message);
                     }
                 }
             ]);
@@ -1381,7 +1274,7 @@ class OmokGameClient {
     }
 
     confirmMove(): void {
-        if (!this.state.previewStone || !this.ws) return;
+        if (!this.state.previewStone || !this.webSocketService.isConnected()) return;
 
         const { x, y } = this.state.previewStone;
 
@@ -1391,11 +1284,7 @@ class OmokGameClient {
             move: {x, y},
             session_id: this.sessionId
         };
-        if (this.ws) {
-            if (this.ws) {
-                this.ws.send(JSON.stringify(message));
-            }
-        }
+        this.webSocketService.sendMessage(message);
 
         // 미리보기 정리
         this.cancelMove();
