@@ -1,5 +1,6 @@
 """게임 비즈니스 로직 서비스"""
 
+import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -8,6 +9,9 @@ from fastapi import WebSocket
 from ..models import ChatMessage, GameType, OmokGameState, Room
 from ..room_manager import room_manager
 from ..session_manager import session_manager
+
+# 상수 정의
+MAX_CHAT_HISTORY = 50
 
 
 class GameService:
@@ -425,8 +429,8 @@ class GameService:
 
             # 채팅 히스토리에 추가
             room.chat_history.append(chat_message)
-            if len(room.chat_history) > 50:
-                room.chat_history.pop(0)
+            if len(room.chat_history) > MAX_CHAT_HISTORY:
+                room.chat_history = room.chat_history[-MAX_CHAT_HISTORY:]
 
             return {
                 "success": True,
@@ -454,31 +458,13 @@ class GameService:
 
     def _validate_session_id(self, session_id: str) -> bool:
         """세션 ID 유효성 검증"""
-        if not session_id or not isinstance(session_id, str):
+        if not isinstance(session_id, str):
             return False
-        # 세션 ID는 UUID 형식이어야 함
-        if len(session_id) != 36:
-            return False
-        # UUID 패턴 검증
-        parts = session_id.split("-")
-        if len(parts) != 5:
-            return False
-        # 각 부분의 길이 체크
-        if (
-            len(parts[0]) != 8
-            or len(parts[1]) != 4
-            or len(parts[2]) != 4
-            or len(parts[3]) != 4
-            or len(parts[4]) != 12
-        ):
-            return False
-        # 16진수 문자만 포함하는지 체크
         try:
-            for part in parts:
-                int(part, 16)
+            uuid.UUID(session_id)  # 표준 UUID 검증
+            return True
         except ValueError:
             return False
-        return True
 
 
 # 전역 서비스 인스턴스
