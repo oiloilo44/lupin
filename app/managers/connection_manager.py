@@ -22,6 +22,8 @@ class ConnectionManager:
         self.websocket_sessions: Dict[WebSocket, str] = {}
         # session_id -> room_id 매핑 (빠른 조회용)
         self.session_to_room: Dict[str, str] = {}
+        # session_id -> WebSocket 역방향 매핑 (O(1) 재접속 최적화)
+        self.session_to_websocket: Dict[str, WebSocket] = {}
         # 방 정리 타이머 관리
         self.room_timer = RoomTimer()
 
@@ -46,6 +48,7 @@ class ConnectionManager:
         if session_id:
             self.websocket_sessions[websocket] = session_id
             self.session_to_room[session_id] = room_id
+            self.session_to_websocket[session_id] = websocket
 
     def remove_connection(self, room_id: str, websocket: WebSocket) -> Optional[str]:
         """WebSocket 연결 제거 및 세션 매핑 정리
@@ -74,6 +77,10 @@ class ConnectionManager:
             # session_to_room 매핑에서도 제거
             if disconnected_session_id in self.session_to_room:
                 del self.session_to_room[disconnected_session_id]
+
+            # session_to_websocket 역방향 매핑에서도 제거
+            if disconnected_session_id in self.session_to_websocket:
+                del self.session_to_websocket[disconnected_session_id]
 
         return disconnected_session_id
 
@@ -166,6 +173,8 @@ class ConnectionManager:
                 del self.websocket_sessions[websocket]
                 if session_id in self.session_to_room:
                     del self.session_to_room[session_id]
+                if session_id in self.session_to_websocket:
+                    del self.session_to_websocket[session_id]
 
         # 연결 집합 제거
         if room_id in self.connections:
@@ -201,12 +210,8 @@ class ConnectionManager:
             websocket: 새 WebSocket 연결
             session_id: 재접속하는 플레이어의 세션 ID
         """
-        # 기존 세션의 WebSocket이 있다면 정리
-        old_websocket = None
-        for ws, sid in self.websocket_sessions.items():
-            if sid == session_id:
-                old_websocket = ws
-                break
+        # 기존 세션의 WebSocket이 있다면 정리 (O(1) 조회)
+        old_websocket = self.session_to_websocket.get(session_id)
 
         if old_websocket:
             # 기존 WebSocket 연결 제거

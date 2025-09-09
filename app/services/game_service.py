@@ -9,6 +9,7 @@ from fastapi import WebSocket
 from ..models import ChatMessage, GameType, OmokGameState, Room
 from ..room_manager import room_manager
 from ..session_manager import session_manager
+from ..utils.error_handler import GameErrorContext, error_handler
 
 # 상수 정의
 MAX_CHAT_HISTORY = 50
@@ -76,14 +77,8 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(f"Join 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context = GameErrorContext.websocket_context(room_id, session_id, "join")
+            return await error_handler.handle_game_service_error(e, context)
 
     async def handle_reconnect(
         self, websocket: WebSocket, room_id: str, session_id: str
@@ -123,16 +118,10 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Reconnect 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            context = GameErrorContext.websocket_context(
+                room_id, session_id, "reconnect"
             )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            return await error_handler.handle_game_service_error(e, context)
 
     async def handle_move(
         self, websocket: WebSocket, room_id: str, move: Dict[str, Any], session_id: str
@@ -156,14 +145,10 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(f"Move 처리 중 오류 in room {room_id}: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context = GameErrorContext.game_move_context(
+                room_id, move.get("x", -1), move.get("y", -1)
+            )
+            return await error_handler.handle_game_service_error(e, context)
 
     async def _handle_omok_move(
         self, room_id: str, room: Room, move: Dict[str, Any], session_id: str
@@ -218,16 +203,9 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Restart request 처리 중 오류 in room {room_id}: {e}", exc_info=True
-            )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context = GameErrorContext.player_context(room_id, from_player)
+            context["message_type"] = "restart_request"
+            return await error_handler.handle_game_service_error(e, context)
 
     async def handle_restart_response(
         self, websocket: WebSocket, room_id: str, accepted: bool
@@ -266,16 +244,11 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Restart response 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            context = GameErrorContext.websocket_context(
+                room_id, message_type="restart_response"
             )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context["accepted"] = str(accepted)
+            return await error_handler.handle_game_service_error(e, context)
 
     async def handle_undo_request(
         self, websocket: WebSocket, room_id: str, from_player: int, session_id: str
@@ -305,16 +278,9 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Undo request 처리 중 오류 in room {room_id}: {e}", exc_info=True
-            )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context = GameErrorContext.player_context(room_id, from_player, session_id)
+            context["message_type"] = "undo_request"
+            return await error_handler.handle_game_service_error(e, context)
 
     async def handle_undo_response(
         self, websocket: WebSocket, room_id: str, accepted: bool, session_id: str
@@ -366,16 +332,11 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Undo response 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            context = GameErrorContext.websocket_context(
+                room_id, session_id, "undo_response"
             )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context["accepted"] = str(accepted)
+            return await error_handler.handle_game_service_error(e, context)
 
     async def _handle_omok_undo(self, room_id: str, room: Room) -> bool:
         """오목 무르기 처리"""
@@ -445,16 +406,11 @@ class GameService:
         except ValueError as e:
             return {"success": False, "error": str(e), "error_type": "validation"}
         except Exception as e:
-            import logging
-
-            logging.error(
-                f"Chat message 처리 중 오류 in room {room_id}: {e}", exc_info=True
+            context = GameErrorContext.websocket_context(
+                room_id, session_id, "chat_message"
             )
-            return {
-                "success": False,
-                "error": "서버 오류가 발생했습니다",
-                "error_type": "server",
-            }
+            context["message_length"] = len(message) if message else 0
+            return await error_handler.handle_game_service_error(e, context)
 
     def _validate_session_id(self, session_id: str) -> bool:
         """세션 ID 유효성 검증"""

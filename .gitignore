@@ -42,4 +42,11 @@ logs/
 .DS_Store
 Thumbs.db
 
+# E2E Test Artifacts
+tests/e2e/screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 /*.md

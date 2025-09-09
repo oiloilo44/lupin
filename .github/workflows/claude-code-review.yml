@@ -32,6 +32,13 @@ jobs:
           fetch-depth: 0  # 전체 히스토리 가져오기
           ref: ${{ github.event.pull_request.head.sha }}  # PR의 실제 최신 커밋 체크아웃
 
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "Merge base: $(git merge-base ${{ github.event.pull_request.base.ref }} HEAD)"
+
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@beta
@@ -43,7 +50,11 @@ jobs:
 
           # Direct prompt for automated review (no @claude mention needed)
           direct_prompt: |
-            Please review this pull request and provide feedback on:
+            Please review the LATEST changes in this pull request.
+
+            IMPORTANT: Review only the changes introduced in the most recent commits, not the entire PR from the beginning.
+
+            Focus on:
             - Code quality and best practices
             - Potential bugs or issues
             - Performance considerations
@@ -53,8 +64,8 @@ jobs:
             Be constructive and helpful in your feedback.
             Please provide your review in Korean language.
 
-          # Optional: Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
-          # use_sticky_comment: true
+          # Use sticky comments to update the same comment on subsequent pushes
+          use_sticky_comment: true
 
           # Optional: Customize review based on file types
           # direct_prompt: |

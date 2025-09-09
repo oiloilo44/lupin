@@ -30,6 +30,33 @@ class ErrorHandler:
         )
 
     @staticmethod
+    async def handle_game_service_error(
+        error: Exception,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        게임 서비스 에러 처리 (응답 딕셔너리 반환용)
+
+        Args:
+            error: 발생한 예외
+            context: 추가 컨텍스트 정보
+
+        Returns:
+            Dict: 게임 서비스 응답용 에러 데이터
+        """
+        context = context or {}
+
+        # 에러 로깅
+        ErrorHandler._log_error(error, "GameService", context)
+
+        # 게임 서비스용 표준화된 응답
+        return {
+            "success": False,
+            "error": "서버 오류가 발생했습니다",
+            "error_type": "server",
+        }
+
+    @staticmethod
     async def handle_websocket_error(
         websocket: WebSocket,
         error: Exception,
