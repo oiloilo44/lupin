@@ -1,14 +1,20 @@
 """FastAPI routes for the Lupin game website."""
+
 import json
 
-from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from .room_manager import room_manager
-from .session_manager import session_manager
+from .dependencies import get_room_manager, get_session_manager, get_websocket_handler
 from .version import add_version_to_url, get_current_app_version
-from .websocket_handler import websocket_handler
 
 # 라우터 설정
 router = APIRouter()
@@ -36,14 +42,20 @@ async def slither_game(request: Request):
 
 # 오목 게임 라우트
 @router.post("/omok/create")
-async def create_omok_room():
+async def create_omok_room(room_manager=Depends(get_room_manager)):
     """오목 방 생성"""
     room_id, url = room_manager.create_omok_room()
     return {"room_id": room_id, "url": url}
 
 
 @router.get("/omok/{room_id}", response_class=HTMLResponse)
-async def omok_room(request: Request, response: Response, room_id: str):
+async def omok_room(
+    request: Request,
+    response: Response,
+    room_id: str,
+    room_manager=Depends(get_room_manager),
+    session_manager=Depends(get_session_manager),
+):
     """오목 게임 방"""
     # 방 존재 여부 확인
     if not room_manager.room_exists(room_id):
@@ -119,14 +131,16 @@ async def omok_room(request: Request, response: Response, room_id: str):
 
 # 장기 게임 라우트
 @router.post("/janggi/create")
-async def create_janggi_room():
+async def create_janggi_room(room_manager=Depends(get_room_manager)):
     """장기 방 생성"""
     room_id, url = room_manager.create_janggi_room()
     return {"room_id": room_id, "url": url}
 
 
 @router.get("/janggi/{room_id}", response_class=HTMLResponse)
-async def janggi_room(request: Request, room_id: str):
+async def janggi_room(
+    request: Request, room_id: str, room_manager=Depends(get_room_manager)
+):
     """장기 게임 방"""
     if not room_manager.room_exists(room_id):
         return templates.TemplateResponse(
@@ -144,7 +158,12 @@ async def janggi_room(request: Request, room_id: str):
 
 
 @router.websocket("/ws/{room_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    room_manager=Depends(get_room_manager),
+    websocket_handler=Depends(get_websocket_handler),
+):
     """WebSocket 엔드포인트"""
     await websocket.accept()
 
@@ -163,7 +182,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 message = json.loads(data)
             except json.JSONDecodeError:
                 await websocket.send_text(
-                    json.dumps({"type": "error", "message": "잘못된 메시지 형식입니다."})
+                    json.dumps(
+                        {"type": "error", "message": "잘못된 메시지 형식입니다."}
+                    )
                 )
                 continue
 
@@ -171,13 +192,15 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
             await websocket_handler.handle_message(websocket, room_id, message)
 
     except WebSocketDisconnect:
-        await _handle_disconnect(room_id, websocket)
+        await _handle_disconnect(room_id, websocket, room_manager, websocket_handler)
     except Exception as e:
         print(f"WebSocket error: {e}")
-        await _handle_disconnect(room_id, websocket)
+        await _handle_disconnect(room_id, websocket, room_manager, websocket_handler)
 
 
-async def _handle_disconnect(room_id: str, websocket: WebSocket):
+async def _handle_disconnect(
+    room_id: str, websocket: WebSocket, room_manager, websocket_handler
+):
     """WebSocket 연결 해제 처리"""
     # WebSocket에서 세션 ID 찾기
     session_id = room_manager.get_session_id_by_websocket(websocket)
@@ -198,8 +221,6 @@ async def _handle_disconnect(room_id: str, websocket: WebSocket):
 
     # 연결 끊김 알림 (상대방에게)
     if disconnected_player and room:
-        from .websocket_handler import websocket_handler
-
         await websocket_handler._notify_player_disconnected(
             room_id, disconnected_player.nickname
         )

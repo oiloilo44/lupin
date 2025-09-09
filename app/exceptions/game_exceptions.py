@@ -141,11 +141,33 @@ class ValidationError(GameError):
         super().__init__(message, "VALIDATION_ERROR", details)
 
 
+class ServerError(GameError):
+    """서버 내부 에러"""
+
+    def __init__(
+        self,
+        message: str = "서버 오류가 발생했습니다",
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, "SERVER_ERROR", details or {})
+
+
+class RateLimitError(GameError):
+    """요청 속도 제한 에러"""
+
+    def __init__(self, limit: int, window: str = "minute"):
+        message = f"요청이 너무 많습니다. {window}당 {limit}회로 제한됩니다"
+        details = {"limit": limit, "window": window}
+        super().__init__(message, "RATE_LIMIT_EXCEEDED", details)
+
+
 # 오목 게임 전용 예외들
 class OmokInvalidMoveError(InvalidMoveError):
     """오목 전용 잘못된 수 에러"""
 
-    def __init__(self, x: int, y: int, reason: str = "해당 위치에 돌을 놓을 수 없습니다"):
+    def __init__(
+        self, x: int, y: int, reason: str = "해당 위치에 돌을 놓을 수 없습니다"
+    ):
         details = {"x": x, "y": y, "reason": reason, "game_type": "omok"}
         super().__init__(reason, x, y)
         self.details.update(details)

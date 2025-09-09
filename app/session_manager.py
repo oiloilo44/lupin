@@ -1,4 +1,5 @@
 """Session management system for user authentication and state tracking."""
+
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Optional

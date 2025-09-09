@@ -42,7 +42,11 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Planning & Documentation (개발 중 임시 계획서들)
-refactoring-plan/
-kiss-architecture-plan/
+# E2E Test Artifacts
+tests/e2e/screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 /*.md

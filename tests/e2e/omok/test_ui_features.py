@@ -205,7 +205,7 @@ class TestS4ExcelStealth:
             pass
 
         # 최종 상태 스크린샷
-        await page.screenshot(path="stealth_mode_final.png")
+        await page.screenshot(path="tests/e2e/screenshots/stealth_mode_final.png")
         print("SUCCESS: 종합 스텔스 모드 테스트 완료")
 
 
@@ -246,7 +246,7 @@ class TestS4AccessibilityAndUsability:
                 "모바일 최적화 요소 발견",
             )
 
-            await page.screenshot(path="mobile_view.png")
+            await page.screenshot(path="tests/e2e/screenshots/mobile_view.png")
             print("SUCCESS: 모바일 반응형 테스트 완료")
 
         finally:

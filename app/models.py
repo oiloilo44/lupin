@@ -83,6 +83,13 @@ class Room:
         """방이 가득 찬지 확인"""
         return len(self.players) >= 2
 
+    def find_player_by_session(self, session_id: str) -> Optional[Player]:
+        """세션 ID로 플레이어 찾기"""
+        for player in self.players:
+            if player.session_id == session_id:
+                return player
+        return None
+
 
 # WebSocket 메시지 타입들
 class MessageType(str, Enum):
