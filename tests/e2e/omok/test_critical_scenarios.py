@@ -89,7 +89,9 @@ class TestS1BasicGameFlow:
                     player_info.get("nickname") == "Player1"
                 ), f"닉네임 불일치: {player_info.get('nickname')}"
                 assert player_info.get("sessionId"), "세션 ID가 없습니다"
-                print(f"SUCCESS: 플레이어 정보 확인 - 닉네임: {player_info.get('nickname')}")
+                print(
+                    f"SUCCESS: 플레이어 정보 확인 - 닉네임: {player_info.get('nickname')}"
+                )
         except Exception as e:
             print(f"INFO: 플레이어 정보 확인 불가 - {e}")
 
@@ -179,7 +181,9 @@ class TestS1BasicGameFlow:
         )
 
         assert player1_info and player2_info, "플레이어 정보를 가져올 수 없습니다"
-        assert player1_info["color"] != player2_info["color"], "플레이어들의 색깔이 같습니다"
+        assert (
+            player1_info["color"] != player2_info["color"]
+        ), "플레이어들의 색깔이 같습니다"
         assert player1_info["color"] in [
             1,
             2,
@@ -256,7 +260,9 @@ class TestS1BasicGameFlow:
         await OmokGameHelper.place_stone_and_verify_turn(
             first_page, first_num, 0.5, 0.5, next_player, page1, page2
         )
-        print(f"SUCCESS: Player{first_num}이 첫 수 완료, 턴이 Player{next_player}로 변경")
+        print(
+            f"SUCCESS: Player{first_num}이 첫 수 완료, 턴이 Player{next_player}로 변경"
+        )
 
         # 두 번째 수 놓기
         if next_player == 2:
@@ -267,7 +273,9 @@ class TestS1BasicGameFlow:
         await OmokGameHelper.place_stone_and_verify_turn(
             second_page, second_num, 0.6, 0.6, third_player, page1, page2
         )
-        print(f"SUCCESS: Player{second_num}이 두 번째 수 완료, 턴이 Player{third_player}로 변경")
+        print(
+            f"SUCCESS: Player{second_num}이 두 번째 수 완료, 턴이 Player{third_player}로 변경"
+        )
 
         # 추가로 3수 더 진행하여 턴제 시스템 안정성 확인 (간단한 클릭만)
         print("INFO: 추가 수 진행으로 턴제 시스템 안정성 확인")
@@ -408,10 +416,14 @@ class TestS2MultiplayerSync:
         )
 
         after_stones = await OmokGameHelper.get_stone_count(page1)
-        print(f"SUCCESS: 실시간 동기화 확인 - 돌 개수: {before_stones} -> {after_stones}")
+        print(
+            f"SUCCESS: 실시간 동기화 확인 - 돌 개수: {before_stones} -> {after_stones}"
+        )
 
         # 턴 변경도 이미 place_stone_and_verify_turn에서 검증됨
-        print(f"SUCCESS: 턴 변경 동기화 확인 - Player{current_player} -> Player{next_player}")
+        print(
+            f"SUCCESS: 턴 변경 동기화 확인 - Player{current_player} -> Player{next_player}"
+        )
 
         # 5. WebSocket 연결 상태 확인
         connection_status1 = await page1.evaluate(
@@ -555,7 +567,9 @@ class TestS2MultiplayerSync:
                     f"재연결 후 턴 동기화 실패: Player1={current_player1}, "
                     f"Player2={current_player2}"
                 )
-                print(f"SUCCESS: 재연결 후 턴 동기화 확인 - 현재 턴: Player{current_player1}")
+                print(
+                    f"SUCCESS: 재연결 후 턴 동기화 확인 - 현재 턴: Player{current_player1}"
+                )
 
         # 7. 재연결 후 정상 게임 진행 가능한지 확인
         try:
@@ -634,7 +648,9 @@ class TestS3SessionRecovery:
 
         # 3. URL 유지 확인
         restored_url = page1.url
-        assert current_url == restored_url, f"URL 불일치: {current_url} vs {restored_url}"
+        assert (
+            current_url == restored_url
+        ), f"URL 불일치: {current_url} vs {restored_url}"
         print("SUCCESS: URL 유지 확인")
 
         # 4. 이어하기 버튼 확인 및 클릭
@@ -828,7 +844,9 @@ class TestS3SessionRecovery:
                 # 게임 URL로 직접 접속
                 await page2.goto(room_url)
                 await page2.wait_for_load_state("networkidle")
-                await page2.wait_for_timeout(TEST_CONFIG["ui_timeout"])  # 세션 복원 대기
+                await page2.wait_for_timeout(
+                    TEST_CONFIG["ui_timeout"]
+                )  # 세션 복원 대기
 
                 # 3. 페이지 로드 및 게임 요소 확인
                 page_content = await page2.content()
@@ -888,7 +906,9 @@ class TestS3SessionRecovery:
                         ):
                             print("SUCCESS: 기존 세션 완전 복원")
                         elif session_id:
-                            print("SUCCESS: 새로운 세션으로 게임 접속 (세션 만료 후 새 세션)")
+                            print(
+                                "SUCCESS: 새로운 세션으로 게임 접속 (세션 만료 후 새 세션)"
+                            )
                         else:
                             print("WARNING: 세션 정보 없음")
                     else:

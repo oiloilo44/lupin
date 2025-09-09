@@ -368,7 +368,9 @@ class OmokGameHelper:
         nickname_input = await OmokGameHelper.find_input_field(
             page, ["#guestNickname", "#nicknameInput"]
         )
-        assert nickname_input is not None, f"{nickname} 닉네임 입력 필드를 찾을 수 없습니다"
+        assert (
+            nickname_input is not None
+        ), f"{nickname} 닉네임 입력 필드를 찾을 수 없습니다"
         await nickname_input.fill(nickname)
 
         # 3. 게임 참여 버튼 클릭
@@ -618,7 +620,10 @@ class OmokGameHelper:
                     )
                     return stone_count
                 elif retry < max_retries - 1:
-                    print(f"INFO: 게임 상태 없음, 재시도 중... " f"({retry+1}/{max_retries})")
+                    print(
+                        f"INFO: 게임 상태 없음, 재시도 중... "
+                        f"({retry+1}/{max_retries})"
+                    )
                     await page.wait_for_timeout(TEST_CONFIG["retry_interval"])
             except Exception as e:
                 if retry < max_retries - 1:
@@ -688,9 +693,15 @@ class OmokGameHelper:
                             f"(재시도 {retry+1}/{max_retries})"
                         )
                 else:
-                    print(f"INFO: 게임 상태를 가져올 수 없음 " f"(재시도 {retry+1}/{max_retries})")
+                    print(
+                        f"INFO: 게임 상태를 가져올 수 없음 "
+                        f"(재시도 {retry+1}/{max_retries})"
+                    )
             except Exception as e:
-                print(f"INFO: 게임 상태 확인 실패 " f"(재시도 {retry+1}/{max_retries}) - {e}")
+                print(
+                    f"INFO: 게임 상태 확인 실패 "
+                    f"(재시도 {retry+1}/{max_retries}) - {e}"
+                )
 
         # HTML 텍스트는 보조 확인용으로만 사용 (게임 상태 확인이 모두 실패한 경우에만)
         if not found_turn:
@@ -715,7 +726,8 @@ class OmokGameHelper:
 
         if assert_on_failure:
             assert found_turn, (
-                f"Player{expected_player} 턴으로 변경되지 않았음 " f"(재시도 {max_retries}회 모두 실패)"
+                f"Player{expected_player} 턴으로 변경되지 않았음 "
+                f"(재시도 {max_retries}회 모두 실패)"
             )
 
         return found_turn
@@ -827,7 +839,8 @@ class OmokGameHelper:
 
         if connection_status != "connected":
             print(
-                f"WARNING: Player{player_num} " f"WebSocket 연결 상태: {connection_status}"
+                f"WARNING: Player{player_num} "
+                f"WebSocket 연결 상태: {connection_status}"
             )
             await page.wait_for_timeout(TEST_CONFIG["state_sync"])
 
@@ -864,24 +877,33 @@ class OmokGameHelper:
                     await page.wait_for_timeout(TEST_CONFIG["retry_interval"] * 1.5)
                     continue
                 else:
-                    raise AssertionError(f"클라이언트 상태 확인 실패: {debug_info['error']}")
+                    raise AssertionError(
+                        f"클라이언트 상태 확인 실패: {debug_info['error']}"
+                    )
 
             my_player = debug_info.get("myPlayer")
             if my_player and my_player.get("color"):
                 break  # 색깔이 배정되면 루프 탈출
 
             if color_check < 4:
-                print(f"INFO: Player{player_num} 색깔 배정 대기 중... " f"({color_check+1}/5)")
+                print(
+                    f"INFO: Player{player_num} 색깔 배정 대기 중... "
+                    f"({color_check+1}/5)"
+                )
                 await page.wait_for_timeout(TEST_CONFIG["retry_interval"] * 1.5)
 
         print(f"DEBUG Player{player_num}: {debug_info}")
 
         my_player = debug_info["myPlayer"]
         if not my_player:
-            raise AssertionError(f"Player{player_num}: 플레이어 정보를 찾을 수 없습니다")
+            raise AssertionError(
+                f"Player{player_num}: 플레이어 정보를 찾을 수 없습니다"
+            )
 
         if not my_player.get("color"):
-            raise AssertionError(f"Player{player_num}: 플레이어 색깔이 배정되지 않았습니다")
+            raise AssertionError(
+                f"Player{player_num}: 플레이어 색깔이 배정되지 않았습니다"
+            )
 
         current_player = debug_info["currentPlayer"]
         my_color = my_player["color"]
@@ -942,7 +964,8 @@ class OmokGameHelper:
         else:
             final_stone_count = await OmokGameHelper.get_stone_count(page1)
             print(
-                f"SUCCESS: 돌 놓기 성공 " f"({initial_stone_count} -> {final_stone_count})"
+                f"SUCCESS: 돌 놓기 성공 "
+                f"({initial_stone_count} -> {final_stone_count})"
             )
             return True
 
@@ -1170,7 +1193,9 @@ class OmokGameHelper:
                     await page1.wait_for_timeout(TEST_CONFIG["retry_interval"])
                     await page2.wait_for_timeout(TEST_CONFIG["retry_interval"])
 
-            print(f"SUCCESS: {moves_count}수 게임 진행 완료 " f"(턴 검증: {verify_turns})")
+            print(
+                f"SUCCESS: {moves_count}수 게임 진행 완료 " f"(턴 검증: {verify_turns})"
+            )
 
         except Exception as e:
             print(f"INFO: 게임 진행 중 오류 (정상적일 수 있음) - {e}")
@@ -1472,10 +1497,16 @@ class OmokGameHelper:
 
         success_ratio = success_count / total_tests
         if success_ratio >= 0.6:  # 60% 이상 성공
-            print(f"SUCCESS: 스텔스 모드 종합 테스트 성공 " f"({success_count}/{total_tests})")
+            print(
+                f"SUCCESS: 스텔스 모드 종합 테스트 성공 "
+                f"({success_count}/{total_tests})"
+            )
             return True
         else:
-            print(f"INFO: 스텔스 모드 일부 기능 테스트 완료 " f"({success_count}/{total_tests})")
+            print(
+                f"INFO: 스텔스 모드 일부 기능 테스트 완료 "
+                f"({success_count}/{total_tests})"
+            )
             return False
 
 

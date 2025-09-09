@@ -141,12 +141,20 @@ class TestS5GameFeatures:
                 )
 
                 print(f"흑돌: {black_stones}개, 백돌: {white_stones}개")
-                assert black_stones == 1, f"흑돌은 그대로 1개여야 하는데 {black_stones}개임"
-                assert white_stones == 0, f"백돌의 마지막 수가 제거되어 0개여야 하는데 {white_stones}개임"
+                assert (
+                    black_stones == 1
+                ), f"흑돌은 그대로 1개여야 하는데 {black_stones}개임"
+                assert (
+                    white_stones == 0
+                ), f"백돌의 마지막 수가 제거되어 0개여야 하는데 {white_stones}개임"
 
-                print("SUCCESS: 백돌 플레이어의 마지막 수 제거 및 턴이 백돌로 변경됨 확인")
+                print(
+                    "SUCCESS: 백돌 플레이어의 마지막 수 제거 및 턴이 백돌로 변경됨 확인"
+                )
             else:
-                raise AssertionError("무르기 요청 팝업을 찾을 수 없어서 테스트 실행 불가")
+                raise AssertionError(
+                    "무르기 요청 팝업을 찾을 수 없어서 테스트 실행 불가"
+                )
         else:
             raise AssertionError("무르기 버튼을 찾을 수 없어서 테스트 실행 불가")
 
@@ -203,7 +211,9 @@ class TestS5GameFeatures:
         await OmokGameHelper.place_stone_and_verify_turn(
             first_page, first_num, 0.5, 0.5, 2, page1, page2
         )
-        print(f"Player{first_num}(흑돌) 첫 수 완료 - Player{second_num}(백돌) 턴으로 변경됨")
+        print(
+            f"Player{first_num}(흑돌) 첫 수 완료 - Player{second_num}(백돌) 턴으로 변경됨"
+        )
 
         # 현재 백돌 턴인 상태에서 흑돌 플레이어가 자신의 수를 무르기 요청
         # (시나리오 S5-2: 상대 턴에서 내 수 무르기)
@@ -253,7 +263,9 @@ class TestS5GameFeatures:
 
                 if not accept_success:
                     # 승인 버튼을 찾지 못했으면 테스트 실패
-                    raise AssertionError("무르기 승인 버튼을 찾을 수 없어서 승인 처리 불가")
+                    raise AssertionError(
+                        "무르기 승인 버튼을 찾을 수 없어서 승인 처리 불가"
+                    )
 
                 # 무르기 후 상태 확인
                 await page1.wait_for_timeout(TEST_CONFIG["element_wait"])
@@ -265,7 +277,9 @@ class TestS5GameFeatures:
                 # 1. 게임 상태에서 현재 턴 확인 - 반드시 흑돌(1)이어야 함
                 game_state = await OmokGameHelper.get_game_state(page1)
                 assert game_state is not None, "게임 상태를 가져올 수 없습니다"
-                assert "current_player" in game_state, "게임 상태에 current_player 정보가 없습니다"
+                assert (
+                    "current_player" in game_state
+                ), "게임 상태에 current_player 정보가 없습니다"
 
                 current_player = game_state["current_player"]
                 print(f"게임 상태에서 현재 플레이어: {current_player}")
@@ -281,13 +295,21 @@ class TestS5GameFeatures:
                     sum(1 for cell in row if cell != 0) for row in board_state
                 )
                 print(f"보드의 총 돌 개수: {stone_count}")
-                assert stone_count == 0, f"무르기 후 보드에 돌이 제거되어야 하는데 {stone_count}개가 남아있음"
+                assert (
+                    stone_count == 0
+                ), f"무르기 후 보드에 돌이 제거되어야 하는데 {stone_count}개가 남아있음"
 
-                print(f"SUCCESS: 무르기 후 턴이 Player{first_num}(흑돌)로 돌아오고 돌이 제거됨을 확인")
+                print(
+                    f"SUCCESS: 무르기 후 턴이 Player{first_num}(흑돌)로 돌아오고 돌이 제거됨을 확인"
+                )
             else:
-                raise AssertionError("무르기 요청 팝업을 찾을 수 없어서 테스트 실행 불가")
+                raise AssertionError(
+                    "무르기 요청 팝업을 찾을 수 없어서 테스트 실행 불가"
+                )
         else:
-            raise AssertionError("상대 턴에서 무르기 버튼을 찾을 수 없어서 테스트 실행 불가")
+            raise AssertionError(
+                "상대 턴에서 무르기 버튼을 찾을 수 없어서 테스트 실행 불가"
+            )
 
         print("SUCCESS: S5-2 상대 턴에서 무르기 테스트 완료")
 
@@ -320,7 +342,9 @@ class TestS5GameFeatures:
         # 무르기 버튼 상태 확인 - 반드시 비활성화되어 있어야 함
         if await undo_btn.is_visible(timeout=TEST_CONFIG["element_wait"]):
             is_disabled = await undo_btn.is_disabled()
-            assert is_disabled, "게임 시작 직후 무르기 버튼이 활성화되어 있으면 안 됩니다"
+            assert (
+                is_disabled
+            ), "게임 시작 직후 무르기 버튼이 활성화되어 있으면 안 됩니다"
             print("SUCCESS: 게임 시작 직후 무르기 버튼 비활성화 확인")
         else:
             print("SUCCESS: 게임 시작 직후 무르기 버튼 숨김 확인")
@@ -460,10 +484,14 @@ class TestS5GameFeatures:
 
                 # 1. 보드 완전 초기화 확인
                 game_state = await OmokGameHelper.get_game_state(page1)
-                assert game_state is not None, "재시작 후 게임 상태를 가져올 수 없습니다"
+                assert (
+                    game_state is not None
+                ), "재시작 후 게임 상태를 가져올 수 없습니다"
 
                 board_state = game_state.get("board")
-                assert board_state is not None, "재시작 후 보드 상태를 가져올 수 없습니다"
+                assert (
+                    board_state is not None
+                ), "재시작 후 보드 상태를 가져올 수 없습니다"
 
                 # 보드의 모든 돌이 제거되었는지 확인
                 total_stones = sum(
@@ -501,7 +529,9 @@ class TestS5GameFeatures:
                 print("SUCCESS: 재시작 후 게임 보드 활성화 확인")
 
             else:
-                raise AssertionError("재시작 요청 팝업을 찾을 수 없어서 테스트 실행 불가")
+                raise AssertionError(
+                    "재시작 요청 팝업을 찾을 수 없어서 테스트 실행 불가"
+                )
         else:
             raise AssertionError("재시작 버튼을 찾을 수 없어서 테스트 실행 불가")
 
@@ -555,7 +585,9 @@ class TestS5GameFeatures:
             )
 
             # 반드시 메시지와 닉네임이 모두 표시되어야 함
-            assert message_found, f"채팅 메시지가 상대방에게 전달되지 않았습니다: {test_message}"
+            assert (
+                message_found
+            ), f"채팅 메시지가 상대방에게 전달되지 않았습니다: {test_message}"
             assert nickname_found, "보낸 사람 닉네임이 표시되지 않았습니다"
             print("SUCCESS: 메시지 즉시 전달 및 닉네임 표시 확인")
 
@@ -613,7 +645,9 @@ class TestS5GameFeatures:
                                 or "script" not in chat_html
                             ):
                                 xss_prevented = True
-                                print("SUCCESS: XSS 방지 확인 - HTML 태그가 이스케이프됨")
+                                print(
+                                    "SUCCESS: XSS 방지 확인 - HTML 태그가 이스케이프됨"
+                                )
                                 break
                     except Exception:
                         continue
@@ -662,7 +696,9 @@ class TestS5GameFeatures:
                 pass
 
         else:
-            raise AssertionError("채팅 입력 필드를 찾을 수 없습니다 - 채팅 기능이 구현되지 않았을 수 있습니다")
+            raise AssertionError(
+                "채팅 입력 필드를 찾을 수 없습니다 - 채팅 기능이 구현되지 않았을 수 있습니다"
+            )
 
         print("SUCCESS: S5-5 실시간 채팅 테스트 완료")
 

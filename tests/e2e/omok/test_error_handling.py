@@ -453,7 +453,9 @@ class TestS7NetworkResilience:
             if memory_info:
                 used_mb = memory_info["usedJSHeapSize"] / 1024 / 1024
                 total_mb = memory_info["totalJSHeapSize"] / 1024 / 1024
-                print(f"SUCCESS: 메모리 사용량 - 사용: {used_mb:.2f}MB, 총: {total_mb:.2f}MB")
+                print(
+                    f"SUCCESS: 메모리 사용량 - 사용: {used_mb:.2f}MB, 총: {total_mb:.2f}MB"
+                )
 
             # 게임 엘리먼트 확인 - 헬퍼 상수 활용
             game_elements = [OmokSelectors.TextPatterns.GAME_ELEMENTS[0]]  # "omokBoard"
