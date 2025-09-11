@@ -74,14 +74,16 @@ CONTEXT_CONFIG = {
 
 @pytest_asyncio.fixture
 async def omok_game_setup(dual_pages):
-    """오목 게임이 설정된 두 플레이어 페이지"""
+    """
+    기존 dual_pages를 활용해서 오목 게임을 설정합니다.
+    """
     page1, page2 = dual_pages
+    from tests.e2e.omok.helpers.game_flow_helper import GameFlowHelper
 
-    # 향후 GameFlowHelper 구현 시 사용할 예정
-    # from tests.e2e.omok.helpers.game_flow_helper import GameFlowHelper
-    # game_page1, game_page2 = await GameFlowHelper.setup_game_from_homepage(
-    #     page1, page2, "TestPlayer1", "TestPlayer2"
-    # )
+    # GameFlowHelper를 사용해서 게임 시작까지 진행
+    game_page1, game_page2 = await GameFlowHelper.setup_game_from_homepage(
+        page1, page2, "TestPlayer1", "TestPlayer2"
+    )
 
-    # 현재는 dual_pages 그대로 반환 (헬퍼 구현 전까지)
-    yield page1, page2
+    yield game_page1, game_page2
+    # cleanup은 기존 dual_pages fixture에서 처리됨
