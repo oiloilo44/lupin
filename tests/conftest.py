@@ -1,7 +1,7 @@
 """E2E 테스트 공통 설정"""
 
 import pytest_asyncio
-from playwright.async_api import Browser, BrowserContext, async_playwright
+from playwright.async_api import Browser, async_playwright
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -14,28 +14,21 @@ async def browser():
 
 
 @pytest_asyncio.fixture
-async def context(browser: Browser):
-    """브라우저 컨텍스트 (테스트마다 새로 생성)"""
+async def page(browser: Browser):
+    """단일 페이지 테스트용"""
     context = await browser.new_context(**CONTEXT_CONFIG)
-    yield context
+    page = await context.new_page()
+    await page.goto(TEST_CONFIG["base_url"])
+
+    yield page
+
+    await page.close()
     await context.close()
 
 
 @pytest_asyncio.fixture
-async def page(context: BrowserContext):
-    """페이지 (테스트마다 새로 생성)"""
-    page = await context.new_page()
-
-    # 기본적으로 우리 서버로 이동
-    await page.goto(TEST_CONFIG["base_url"])
-
-    yield page
-    await page.close()
-
-
-@pytest_asyncio.fixture
 async def dual_pages(browser: Browser):
-    """멀티플레이어 테스트를 위한 2개 페이지"""
+    """멀티플레이어 테스트를 위한 2개 페이지 (세션 분리)"""
     context1 = await browser.new_context(**CONTEXT_CONFIG)
     context2 = await browser.new_context(**CONTEXT_CONFIG)
 
@@ -54,31 +47,15 @@ async def dual_pages(browser: Browser):
     await context2.close()
 
 
-@pytest_asyncio.fixture
-async def single_browser_context(browser: Browser):
-    """단일 컨텍스트 테스트용 (test_error_handling 등에서 사용)"""
-    context = await browser.new_context(**CONTEXT_CONFIG)
-    yield context
-    await context.close()
-
-
-# 테스트 설정 (통합된 타임아웃 관리)
+# 테스트 설정
 TEST_CONFIG = {
     "base_url": "http://localhost:8003",
-    # 기본 타임아웃들
-    "timeout": 30000,  # 30초 (일반적인 최대 대기)
-    "short_timeout": 2000,  # 2초 (짧은 대기)
-    "ui_timeout": 5000,  # 5초 (UI 요소 대기)
-    "network_timeout": 10000,  # 10초 (네트워크 관련)
-    "game_timeout": 60000,  # 60초 (게임 관련)
-    # 세분화된 타임아웃들
-    "element_wait": 2000,  # 요소 표시 대기
-    "network_wait": 5000,  # 네트워크 응답 대기
+    # 핵심 타임아웃들 (실제 필요한 것들만)
+    "element_wait": 2000,  # UI 요소 표시 대기
+    "state_sync": 1500,  # 상태 동기화 대기 (턴 변경 등)
     "game_action": 3000,  # 게임 액션 처리 대기
-    "state_sync": 1500,  # 상태 동기화 대기
-    "websocket": 10000,  # WebSocket 연결 대기
-    "page_load": 8000,  # 페이지 로딩 대기
-    "retry_interval": 500,  # 재시도 간격
+    "ui_timeout": 5000,  # 페이지 전환 등 UI 대기
+    "game_timeout": 10000,  # 게임 시작 등 긴 작업
 }
 
 # 브라우저 설정
@@ -93,3 +70,18 @@ CONTEXT_CONFIG = {
     "locale": "ko-KR",
     "ignore_https_errors": True,
 }
+
+
+@pytest_asyncio.fixture
+async def omok_game_setup(dual_pages):
+    """오목 게임이 설정된 두 플레이어 페이지"""
+    page1, page2 = dual_pages
+
+    # 향후 GameFlowHelper 구현 시 사용할 예정
+    # from tests.e2e.omok.helpers.game_flow_helper import GameFlowHelper
+    # game_page1, game_page2 = await GameFlowHelper.setup_game_from_homepage(
+    #     page1, page2, "TestPlayer1", "TestPlayer2"
+    # )
+
+    # 현재는 dual_pages 그대로 반환 (헬퍼 구현 전까지)
+    yield page1, page2
